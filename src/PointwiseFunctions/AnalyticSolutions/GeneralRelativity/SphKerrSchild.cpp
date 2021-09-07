@@ -123,23 +123,6 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
 template <typename DataType, typename Frame>
 void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
-    const gsl::not_null<Scalar<DataType>*> a_dot_x,
-    const gsl::not_null<CachedBuffer*> cache,
-    internal_tags::a_dot_x<DataType> /*meta*/) const noexcept {
-  const auto& x_sph_minus_center =
-      cache->get_var(internal_tags::x_sph_minus_center<DataType, Frame>{});
-
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
-  get(*a_dot_x) = spin_a[0] * get<0>(x_sph_minus_center) +
-                  spin_a[1] * get<1>(x_sph_minus_center) +
-                  spin_a[2] * get<2>(x_sph_minus_center);
-
-  std::cout << "this is spin_a " << spin_a << "\n";
-  std::cout << "this is a_dot_x " << *a_dot_x << "\n";
-}
-
-template <typename DataType, typename Frame>
-void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<tnsr::Ij<DataType, 3, Frame>*> matrix_F,
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::matrix_F<DataType, Frame> /*meta*/) const noexcept {
@@ -341,6 +324,23 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   std::cout << "this is matrix_Q:"
             << "\n"
             << *matrix_Q << "\n";
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<Scalar<DataType>*> a_dot_x,
+    const gsl::not_null<CachedBuffer*> cache,
+    internal_tags::a_dot_x<DataType> /*meta*/) const noexcept {
+  const auto& x_sph_minus_center =
+      cache->get_var(internal_tags::x_sph_minus_center<DataType, Frame>{});
+
+  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  get(*a_dot_x) = spin_a[0] * get<0>(x_sph_minus_center) +
+                  spin_a[1] * get<1>(x_sph_minus_center) +
+                  spin_a[2] * get<2>(x_sph_minus_center);
+
+  std::cout << "this is spin_a " << spin_a << "\n";
+  std::cout << "this is a_dot_x " << *a_dot_x << "\n";
 }
 
 template <typename DataType, typename Frame>
