@@ -8,6 +8,7 @@ set(LIBRARY_SOURCES
   Test_KerrHorizon.cpp
   Test_KerrSchild.cpp
   Test_Minkowski.cpp
+  Test_SphKerrSchild.cpp
   Test_Tov.cpp
   Test_WrappedGr.cpp
   )
