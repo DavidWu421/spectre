@@ -174,7 +174,6 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   const double null_vector_0 = -1.0;
   // const double t = 1.0;
 
-
   // Set up the solution, computer objet, and cache object
   gr::Solutions::SphKerrSchild solution(mass, spin, center);
   gr::Solutions::SphKerrSchild::IntermediateComputer sks_computer(
@@ -257,6 +256,22 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       make_not_null(&matrix_Q), make_not_null(&cache),
       gr::Solutions::SphKerrSchild::internal_tags::matrix_Q<DataVector,
                                                             Frame::Inertial>{});
+
+  // Explicit matrix_Q test
+  auto expected_matrix_Q =
+      make_with_value<tnsr::Ij<DataVector, 3, Frame::Inertial>>(x, 0.0);
+  expected_matrix_Q.get(2, 2) =
+      square(get_element(spin, 2) * mass) /
+      ((get_element(r, 0) + get_element(rho, 0)) * get_element(rho, 0));
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = i; j < 3; ++j) {  // Symmetry
+      if (i == j) {
+        expected_matrix_Q.get(i, j) += get_element(r, 0) / get_element(rho, 0);
+        //   expected_matrix_Q.get(i, j) += (2,2,2) /(2.06277,2.06277,2.06277);
+      }
+    }
+  }
+  CHECK_ITERABLE_APPROX(matrix_Q, expected_matrix_Q);
 
   // matrix_G1 test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_G1{1, 0.};
