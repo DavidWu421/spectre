@@ -250,6 +250,12 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
                gr::Solutions::SphKerrSchild::internal_tags::deriv_jacobian<
                    DataVector, Frame::Inertial>{});
 
+  // a squared inner product function
+  auto a_squared = make_with_value<Scalar<DataVector>>(x, 0.);
+  for (size_t i = 0; i < 3; i++) {
+    a_squared.get() += square(get_element(spin, i) * mass);
+  }
+
   // matrix_Q test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_Q{1, 0.};
   sks_computer(
@@ -286,6 +292,23 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   sks_computer(make_not_null(&matrix_G1), make_not_null(&cache),
                gr::Solutions::SphKerrSchild::internal_tags::matrix_G1<
                    DataVector, Frame::Inertial>{});
+
+  // Explicit matrix_G1 test
+  auto expected_matrix_G1 =
+      make_with_value<tnsr::Ij<DataVector, 3, Frame::Inertial>>(x, 0.);
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = 0; j < 3; ++j) {
+      expected_matrix_G1.get(i, j) =
+          -get_element(spin, i) * get_element(spin, j) * square(mass);
+      if (i == j) {
+        expected_matrix_G1.get(i, j) += a_squared.get();
+      }
+      expected_matrix_G1.get(i, j) /=
+          (get_element(rho, 0) * get_element(rho, 0) * get_element(r, 0));
+    }
+  }
+
+  CHECK_ITERABLE_APPROX(matrix_G1, expected_matrix_G1);
 
   // s_number test
   Scalar<DataVector> s_number{1, 0.};
