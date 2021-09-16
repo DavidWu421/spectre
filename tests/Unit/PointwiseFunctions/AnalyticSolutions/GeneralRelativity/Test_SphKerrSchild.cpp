@@ -257,6 +257,30 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::matrix_Q<DataVector,
                                                             Frame::Inertial>{});
 
+  // Explicit matrix_Q test
+  auto expected_matrix_Q =
+      make_with_value<tnsr::Ij<DataVector, 3, Frame::Inertial>>(x, 0.0);
+  auto rho_r_constant =
+      1 / (sqrt(14) + sqrt(14 + .295829)) / sqrt(14 + .295829);
+  auto mass_squared = square(1.01);
+  expected_matrix_Q.get(0, 0) = rho_r_constant * square(0.2 * 1.01);
+  expected_matrix_Q.get(0, 1) = rho_r_constant * 0.2 * 0.3 * mass_squared;
+  expected_matrix_Q.get(0, 2) = rho_r_constant * 0.2 * 0.4 * mass_squared;
+  expected_matrix_Q.get(1, 0) = rho_r_constant * 0.3 * 0.2 * mass_squared;
+  expected_matrix_Q.get(1, 1) = rho_r_constant * square(0.3 * 1.01);
+  expected_matrix_Q.get(1, 2) = rho_r_constant * 0.3 * 0.4 * mass_squared;
+  expected_matrix_Q.get(2, 0) = rho_r_constant * 0.4 * 0.2 * mass_squared;
+  expected_matrix_Q.get(2, 1) = rho_r_constant * 0.4 * 0.3 * mass_squared;
+  expected_matrix_Q.get(2, 2) = rho_r_constant * square(0.4 * 1.01);
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = 0; j < 3; ++j) {  // Symmetry
+      if (i == j) {
+        expected_matrix_Q.get(i, j) += sqrt(14) / sqrt(14 + .295829);
+      }
+    }
+  }
+  CHECK_ITERABLE_APPROX(matrix_Q, expected_matrix_Q);
+
   // matrix_G1 test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_G1{1, 0.};
   sks_computer(make_not_null(&matrix_G1), make_not_null(&cache),
