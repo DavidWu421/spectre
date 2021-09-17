@@ -256,6 +256,8 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
     a_squared.get() += square(get_element(spin, i) * mass);
   }
 
+  std::cout << "This is a_squared:" << a_squared.get() << std::endl;
+
   // matrix_Q test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_Q{1, 0.};
   sks_computer(
@@ -296,18 +298,24 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   // Explicit matrix_G1 test
   auto expected_matrix_G1 =
       make_with_value<tnsr::Ij<DataVector, 3, Frame::Inertial>>(x, 0.);
+  auto rho_sqr = (14 + a_squared.get());
+  auto rho_sqr_r_constant = (sqrt(14) * rho_sqr);
+  expected_matrix_G1.get(0, 0) = -0.2 * 0.2 * square(mass) / rho_sqr_r_constant;
+  expected_matrix_G1.get(0, 1) = -0.2 * 0.3 * square(mass) / rho_sqr_r_constant;
+  expected_matrix_G1.get(0, 2) = -0.2 * 0.4 * square(mass) / rho_sqr_r_constant;
+  expected_matrix_G1.get(1, 0) = -0.3 * 0.2 * square(mass) / rho_sqr_r_constant;
+  expected_matrix_G1.get(1, 1) = -square(0.3 * mass) / rho_sqr_r_constant;
+  expected_matrix_G1.get(1, 2) = -0.3 * 0.4 * square(mass) / rho_sqr_r_constant;
+  expected_matrix_G1.get(2, 0) = -0.4 * 0.2 * square(mass) / rho_sqr_r_constant;
+  expected_matrix_G1.get(2, 1) = -0.4 * 0.3 * square(mass) / rho_sqr_r_constant;
+  expected_matrix_G1.get(2, 2) = -square(0.4 * mass) / rho_sqr_r_constant;
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 3; ++j) {
-      expected_matrix_G1.get(i, j) =
-          -get_element(spin, i) * get_element(spin, j) * square(mass);
       if (i == j) {
-        expected_matrix_G1.get(i, j) += a_squared.get();
+        expected_matrix_G1.get(i, j) += a_squared.get() / rho_sqr_r_constant;
       }
-      expected_matrix_G1.get(i, j) /=
-          (get_element(rho, 0) * get_element(rho, 0) * get_element(r, 0));
     }
   }
-
   CHECK_ITERABLE_APPROX(matrix_G1, expected_matrix_G1);
 
   // s_number test
