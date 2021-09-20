@@ -294,6 +294,11 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::internal_tags::s_number<
           DataVector>{});
 
+  // Explicit s_number test
+  auto expected_s_number =
+    make_with_value<Scalar<DataVector>>(s_number, 14.2914571428571428);
+  CHECK_ITERABLE_APPROX(s_number, expected_s_number);
+
   // matrix_G2 test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_G2{1, 0.};
   sks_computer(make_not_null(&matrix_G2), make_not_null(&cache),
