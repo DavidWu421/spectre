@@ -327,7 +327,7 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
 
   // Explicit s_number test
   auto expected_s_number =
-    make_with_value<Scalar<DataVector>>(s_number, 14.2914571428571428);
+      make_with_value<Scalar<DataVector>>(s_number, 14.2914571428571428);
   CHECK_ITERABLE_APPROX(s_number, expected_s_number);
 
   // matrix_G2 test
@@ -335,6 +335,27 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   sks_computer(make_not_null(&matrix_G2), make_not_null(&cache),
                gr::Solutions::SphKerrSchild::internal_tags::matrix_G2<
                    DataVector, Frame::Inertial>{});
+
+  // Explicit matrix_G2 test
+  auto expected_matrix_G2 =
+      make_with_value<tnsr::Ij<DataVector, 3, Frame::Inertial>>(x, 0.0);
+  auto constant_factor =
+      (14 + .295829) / get_element(expected_s_number, 0) / sqrt(14);
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = 0; j < 3; ++j) {  // Symmetry
+      expected_matrix_G2.get(i, j) = constant_factor;
+    }
+  }
+  expected_matrix_G2.get(0, 0) *= expected_matrix_Q.get(0, 0);
+  expected_matrix_G2.get(0, 1) *= expected_matrix_Q.get(0, 1);
+  expected_matrix_G2.get(0, 2) *= expected_matrix_Q.get(0, 2);
+  expected_matrix_G2.get(1, 0) *= expected_matrix_Q.get(1, 0);
+  expected_matrix_G2.get(1, 1) *= expected_matrix_Q.get(1, 1);
+  expected_matrix_G2.get(1, 2) *= expected_matrix_Q.get(1, 2);
+  expected_matrix_G2.get(2, 0) *= expected_matrix_Q.get(2, 0);
+  expected_matrix_G2.get(2, 1) *= expected_matrix_Q.get(2, 1);
+  expected_matrix_G2.get(2, 2) *= expected_matrix_Q.get(2, 2);
+  CHECK_ITERABLE_APPROX(matrix_G2, expected_matrix_G2);
 
   // G1_dot_x test
   tnsr::I<DataVector, 3, Frame::Inertial> G1_dot_x{3, 0.};
