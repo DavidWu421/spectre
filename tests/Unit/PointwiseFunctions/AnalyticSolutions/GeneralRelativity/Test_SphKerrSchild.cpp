@@ -256,7 +256,7 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
     a_squared.get() += square(get_element(spin, i) * mass);
   }
 
-  std::cout << "This is a_squared:" << a_squared.get() << std::endl;
+  std::cout << "This is a_square: " << a_squared.get() << "\n";
 
   // matrix_Q test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_Q{1, 0.};
@@ -370,6 +370,18 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       make_not_null(&G2_dot_x), make_not_null(&cache),
       gr::Solutions::SphKerrSchild::internal_tags::G2_dot_x<DataVector,
                                                             Frame::Inertial>{});
+
+  // Explicit G2_dot_x test
+  auto expected_G2_dot_x =
+      make_with_value<tnsr::i<DataVector, 3, Frame::Inertial>>(x, 0.0);
+  expected_G2_dot_x.get(0) = 0.2649459515899923 + (0.0005752913793464839 * 2) +
+                             (0.0007670551724619786 * 3);
+  expected_G2_dot_x.get(1) = 0.0005752913793464839 + (0.2654253610727811 * 2) +
+                             (0.001150582758692968 * 3);
+  expected_G2_dot_x.get(2) = 0.0007670551724619786 +
+                             (0.001150582758692968 * 2) +
+                             (0.2660965343486853 * 3);
+  CHECK_ITERABLE_APPROX(G2_dot_x, expected_G2_dot_x);
 
   // inv_jacobian test
   tnsr::Ij<DataVector, 3, Frame::Inertial> inv_jacobian{1, 0.};

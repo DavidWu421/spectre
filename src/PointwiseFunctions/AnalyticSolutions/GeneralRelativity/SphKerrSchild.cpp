@@ -392,6 +392,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     internal_tags::matrix_G2<DataType, Frame> /*meta*/) const noexcept {
   const auto& matrix_Q =
       cache->get_var(internal_tags::matrix_Q<DataType, Frame>{});
+
   const auto& rho = get(cache->get_var(internal_tags::rho<DataType>{}));
   const auto& r = get(cache->get_var(internal_tags::r<DataType>{}));
   const auto& s_number =
@@ -402,7 +403,8 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
       matrix_G2->get(i, j) = (square(rho) / r) * matrix_Q.get(i, j) / s_number;
     }
   }
-  std::cout << "this is matrix_G2:"
+
+  std::cout << std::setprecision(16) << "this is matrix_G2:"
             << "\n"
             << *matrix_G2 << "\n";
 }
@@ -444,6 +446,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
       G2_dot_x->get(i) += matrix_G2.get(m, i) * x_sph_minus_center.get(m);
     }
   }
+
   std::cout << "this is G2_dot_x:"
             << "\n"
             << *G2_dot_x << "\n";
