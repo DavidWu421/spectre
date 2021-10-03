@@ -6,7 +6,6 @@
 #include <limits>
 #include <string>
 #include <type_traits>
-#include "Framework/TestingFramework.hpp"
 
 #include "DataStructures/DataBox/Prefixes.hpp"
 #include "DataStructures/DataVector.hpp"
@@ -15,6 +14,7 @@
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "Framework/TestCreation.hpp"
 #include "Framework/TestHelpers.hpp"
+#include "Framework/TestingFramework.hpp"
 #include "Helpers/PointwiseFunctions/AnalyticSolutions/GeneralRelativity/VerifyGrSolution.hpp"
 #include "Helpers/PointwiseFunctions/AnalyticSolutions/TestHelpers.hpp"
 #include "NumericalAlgorithms/LinearOperators/PartialDerivatives.tpp"
@@ -426,8 +426,6 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   expected_inv_jacobian.get(2, 2) =
       expected_matrix_Q.get(2, 2) +
       expected_G1_dot_x.get(2) * expected_G2_dot_x.get(2);
-  std::cout << "THIS IS EXPECTED INV JACOBIAN: " << expected_inv_jacobian
-            << "\n";
   CHECK_ITERABLE_APPROX(inv_jacobian, expected_inv_jacobian);
 
   // matrix_E1 test

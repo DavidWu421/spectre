@@ -561,16 +561,16 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   const auto& s_number =
       get(cache->get_var(internal_tags::s_number<DataType>{}));
 
-  for (int k = 0; k < 3; ++k) {
-    for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
+  for (size_t k = 0; k < 3; ++k) {
+    for (size_t i = 0; i < 3; ++i) {
+      for (size_t j = 0; j < 3; ++j) {
         deriv_inv_jacobian->get(i, j, k) =
             matrix_D.get(i, j) * x_sph_minus_center.get(k) +
             matrix_G1.get(i, k) * G2_dot_x.get(j) +
             matrix_G2.get(k, j) * G1_dot_x.get(i) -
             2. * a_dot_x * spin_a[k] / s_number / square(r) * G1_dot_x.get(i) *
                 G2_dot_x.get(j);
-        for (int m = 0; m < 3; ++m) {
+        for (size_t m = 0; m < 3; ++m) {
           deriv_inv_jacobian->get(i, j, k) +=
               matrix_E1.get(i, m) * x_sph_minus_center.get(m) *
                   G2_dot_x.get(j) * x_sph_minus_center.get(k) / r +
@@ -652,7 +652,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const double den = 1. / square(get_element(rho, s));
     const double rboyer = get_element(r, s);
 
-    for (int i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < 3; ++i) {
       get_element(kerr_schild_l->get(i), s) =
           den * (rboyer * get_element(x_kerr_schild.get(i), s) +
                  get_element(a_dot_x, s) * spin_a[i] / rboyer -
