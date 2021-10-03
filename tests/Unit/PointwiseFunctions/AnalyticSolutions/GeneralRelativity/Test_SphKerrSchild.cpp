@@ -378,11 +378,57 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::G2_dot_x<DataVector,
                                                             Frame::Inertial>{});
 
+  // Explicit G2_dot_x test
+  auto expected_G2_dot_x =
+      make_with_value<tnsr::i<DataVector, 3, Frame::Inertial>>(x, 0.0);
+  expected_G2_dot_x.get(0) = 0.2649459515899923 + (0.0005752913793464839 * 2) +
+                             (0.0007670551724619786 * 3);
+  expected_G2_dot_x.get(1) = 0.0005752913793464839 + (0.2654253610727811 * 2) +
+                             (0.001150582758692968 * 3);
+  expected_G2_dot_x.get(2) = 0.0007670551724619786 +
+                             (0.001150582758692968 * 2) +
+                             (0.2660965343486853 * 3);
+  CHECK_ITERABLE_APPROX(G2_dot_x, expected_G2_dot_x);
+
   // inv_jacobian test
   tnsr::Ij<DataVector, 3, Frame::Inertial> inv_jacobian{1, 0.};
   sks_computer(make_not_null(&inv_jacobian), make_not_null(&cache),
                gr::Solutions::SphKerrSchild::internal_tags::inv_jacobian<
                    DataVector, Frame::Inertial>{});
+
+  // Explicit inv_jacobian test
+  auto expected_inv_jacobian =
+      make_with_value<tnsr::Ij<DataVector, 3, Frame::Inertial>>(x, 0.0);
+  expected_inv_jacobian.get(0, 0) =
+      expected_matrix_Q.get(0, 0) +
+      expected_G1_dot_x.get(0) * expected_G2_dot_x.get(0);
+  expected_inv_jacobian.get(0, 1) =
+      expected_matrix_Q.get(0, 1) +
+      expected_G1_dot_x.get(0) * expected_G2_dot_x.get(1);
+  expected_inv_jacobian.get(0, 2) =
+      expected_matrix_Q.get(0, 2) +
+      expected_G1_dot_x.get(0) * expected_G2_dot_x.get(2);
+  expected_inv_jacobian.get(1, 0) =
+      expected_matrix_Q.get(1, 0) +
+      expected_G1_dot_x.get(1) * expected_G2_dot_x.get(0);
+  expected_inv_jacobian.get(1, 1) =
+      expected_matrix_Q.get(1, 1) +
+      expected_G1_dot_x.get(1) * expected_G2_dot_x.get(1);
+  expected_inv_jacobian.get(1, 2) =
+      expected_matrix_Q.get(1, 2) +
+      expected_G1_dot_x.get(1) * expected_G2_dot_x.get(2);
+  expected_inv_jacobian.get(2, 0) =
+      expected_matrix_Q.get(2, 0) +
+      expected_G1_dot_x.get(2) * expected_G2_dot_x.get(0);
+  expected_inv_jacobian.get(2, 1) =
+      expected_matrix_Q.get(2, 1) +
+      expected_G1_dot_x.get(2) * expected_G2_dot_x.get(1);
+  expected_inv_jacobian.get(2, 2) =
+      expected_matrix_Q.get(2, 2) +
+      expected_G1_dot_x.get(2) * expected_G2_dot_x.get(2);
+  std::cout << "THIS IS EXPECTED INV JACOBIAN: " << expected_inv_jacobian
+            << "\n";
+  CHECK_ITERABLE_APPROX(inv_jacobian, expected_inv_jacobian);
 
   // matrix_E1 test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_E1{1, 0.};
@@ -390,11 +436,68 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
                gr::Solutions::SphKerrSchild::internal_tags::matrix_E1<
                    DataVector, Frame::Inertial>{});
 
+  // Explicit matrix_E1 test
+  auto expected_matrix_E1 =
+      make_with_value<tnsr::Ij<DataVector, 3, Frame::Inertial>>(x, 0.0);
+  auto constant_factor_E1 =
+      -1 / (14 + .295829) * (1 / 14.0 + 2 / (14 + .295829));
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = 0; j < 3; ++j) {
+      expected_matrix_E1.get(i, j) = constant_factor_E1;
+    }
+  }
+  expected_matrix_E1.get(0, 0) *= (a_squared.get() - square(0.2 * 1.01));
+  expected_matrix_E1.get(0, 1) *= -0.2 * 0.3 * mass_squared;
+  expected_matrix_E1.get(0, 2) *= -0.2 * 0.4 * mass_squared;
+  expected_matrix_E1.get(1, 0) *= -0.3 * 0.2 * mass_squared;
+  expected_matrix_E1.get(1, 1) *= a_squared.get() - square(0.3 * 1.01);
+  expected_matrix_E1.get(1, 2) *= -0.3 * 0.4 * mass_squared;
+  expected_matrix_E1.get(2, 0) *= -0.4 * 0.2 * mass_squared;
+  expected_matrix_E1.get(2, 1) *= -0.4 * 0.3 * mass_squared;
+  expected_matrix_E1.get(2, 2) *= a_squared.get() - square(0.4 * 1.01);
+  CHECK_ITERABLE_APPROX(matrix_E1, expected_matrix_E1);
+
   // matrix_E2 test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_E2{1, 0.};
   sks_computer(make_not_null(&matrix_E2), make_not_null(&cache),
                gr::Solutions::SphKerrSchild::internal_tags::matrix_E2<
                    DataVector, Frame::Inertial>{});
+
+  // Explicit matrix_E2 test
+  auto expected_matrix_E2 =
+      make_with_value<tnsr::Ij<DataVector, 3, Frame::Inertial>>(x, 0.0);
+  auto constant_factor_1_E2 =
+      -get_element(a_squared, 0) / (14 + .295829) / sqrt(14);
+  //   std::cout << "THIS IS CONST FACT 1 E2" << constant_factor_1_E2 << "\n";
+  auto constant_factor_2_E2 =
+      (2 / get_element(expected_s_number, 0)) *
+      (sqrt(14) - square(get_element(a_dot_x, 0)) / pow(14, 1.5));
+  auto constant_factor_tot_E2 = constant_factor_1_E2 - constant_factor_2_E2;
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = 0; j < 3; ++j) {
+      expected_matrix_E2.get(i, j) =
+          matrix_P.get(i, j) / get_element(expected_s_number, 0);
+    }
+  }
+  expected_matrix_E2.get(0, 0) +=
+      expected_matrix_G2.get(0, 0) * constant_factor_tot_E2;
+  expected_matrix_E2.get(0, 1) +=
+      expected_matrix_G2.get(0, 1) * constant_factor_tot_E2;
+  expected_matrix_E2.get(0, 2) +=
+      expected_matrix_G2.get(0, 2) * constant_factor_tot_E2;
+  expected_matrix_E2.get(1, 0) +=
+      expected_matrix_G2.get(1, 0) * constant_factor_tot_E2;
+  expected_matrix_E2.get(1, 1) +=
+      expected_matrix_G2.get(1, 1) * constant_factor_tot_E2;
+  expected_matrix_E2.get(1, 2) +=
+      expected_matrix_G2.get(1, 2) * constant_factor_tot_E2;
+  expected_matrix_E2.get(2, 0) +=
+      expected_matrix_G2.get(2, 0) * constant_factor_tot_E2;
+  expected_matrix_E2.get(2, 1) +=
+      expected_matrix_G2.get(2, 1) * constant_factor_tot_E2;
+  expected_matrix_E2.get(2, 2) +=
+      expected_matrix_G2.get(2, 2) * constant_factor_tot_E2;
+  CHECK_ITERABLE_APPROX(matrix_E2, expected_matrix_E2);
 
   // x_kerr_schild test
   auto x_kerr_schild = spatial_coords<Frame::Inertial>(used_for_size);
