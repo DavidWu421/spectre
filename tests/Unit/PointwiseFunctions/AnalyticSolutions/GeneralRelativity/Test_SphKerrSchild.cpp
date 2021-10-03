@@ -364,6 +364,13 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::G1_dot_x<DataVector,
                                                             Frame::Inertial>{});
 
+  // Explicit G1_dot_x test
+  tnsr::I<DataVector, 3, Frame::Inertial> expected_G1_dot_x{3, 0.};
+  expected_G1_dot_x.get(0) = -0.0020977902866797763;
+  expected_G1_dot_x.get(1) = -0.00038141641575995845;
+  expected_G1_dot_x.get(2) = 0.0013349574551598563;
+  CHECK_ITERABLE_APPROX(G1_dot_x, expected_G1_dot_x);
+
   // G2_dot_x test
   tnsr::i<DataVector, 3, Frame::Inertial> G2_dot_x{3, 0.};
   sks_computer(
