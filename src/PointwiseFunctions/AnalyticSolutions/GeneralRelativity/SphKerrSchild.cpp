@@ -617,8 +617,10 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   const tnsr::I<DataType, 3, Frame>& x_kerr_schild =
       cache->get_var(internal_tags::x_kerr_schild<DataType, Frame>{});
 
-  tnsr::i<DataVector, 3, Frame> cross_tensor{1, 0.};
-  tnsr::i<DataVector, 3, Frame> spin_tensor{1, 0.};
+  auto cross_tensor =
+      make_with_value<tnsr::i<DataType, 3, Frame>>(get<0>(x_kerr_schild), 0.0);
+  auto spin_tensor =
+      make_with_value<tnsr::i<DataType, 3, Frame>>(get<0>(x_kerr_schild), 0.0);
 
   for (size_t m = 0; m < get_size(get_element(x_kerr_schild, 0)); ++m) {
     for (size_t s = 0; s < 3; ++s) {
@@ -841,7 +843,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
     for (size_t j = 0; j < 3; ++j) {
       for (size_t i = 0; i < 3; ++i) {
-        temp_deriv_l[i, j] = get_element(deriv_l->get(i + 1, j + 1), s);
+        temp_deriv_l.get(i, j) = get_element(deriv_l->get(i + 1, j + 1), s);
       }
     }
 
