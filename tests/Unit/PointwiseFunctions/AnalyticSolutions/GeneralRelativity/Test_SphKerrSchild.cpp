@@ -286,15 +286,15 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
             << "\n"
             << matrix_E2 << "\n";
 
-  // //   deriv_inv_jacobian test - non perturbed
-  //     tnsr::iJk<DataVector, 3, Frame::Inertial> deriv_inv_jacobian{1_st, 0.};
-  //     sks_computer(make_not_null(&deriv_inv_jacobian), make_not_null(&cache),
-  //       gr::Solutions::SphKerrSchild::internal_tags::deriv_inv_jacobian<
-  //                      DataVector, Frame::Inertial>{});
+  //   deriv_inv_jacobian test - non perturbed
+  tnsr::iJk<DataVector, 3, Frame::Inertial> deriv_inv_jacobian{1_st, 0.};
+  sks_computer(make_not_null(&deriv_inv_jacobian), make_not_null(&cache),
+               gr::Solutions::SphKerrSchild::internal_tags::deriv_inv_jacobian<
+                   DataVector, Frame::Inertial>{});
 
-  //     std::cout << "This is deriv inv jacobian: "
-  //               << "\n"
-  //               << deriv_inv_jacobian << "\n";
+  std::cout << "This is deriv inv jacobian: "
+            << "\n"
+            << deriv_inv_jacobian << "\n";
 
   // x_kerr_schild test - non perturbed
   auto x_kerr_schild = spatial_coords<Frame::Inertial>(used_for_size);
@@ -306,47 +306,49 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
             << "\n"
             << x_kerr_schild << "\n";
 
-  // // a_cross_x test - non perturbed
-  // auto a_cross_x = spatial_coords<Frame::Inertial>(used_for_size);
-  // sks_computer(make_not_null(&a_cross_x), make_not_null(&cache),
-  //              gr::Solutions::SphKerrSchild::internal_tags::a_cross_x<
-  //                  DataVector, Frame::Inertial>{});
+  // a_cross_x test - non perturbed
+  auto a_cross_x = spatial_coords<Frame::Inertial>(used_for_size);
+  sks_computer(make_not_null(&a_cross_x), make_not_null(&cache),
+               gr::Solutions::SphKerrSchild::internal_tags::a_cross_x<
+                   DataVector, Frame::Inertial>{});
 
-  // std::cout << "This is a_cross_x: "
-  //           << "\n"
-  //           << a_cross_x << "\n";
+  std::cout << "This is a_cross_x: "
+            << "\n"
+            << a_cross_x << "\n";
 
-  // // kerr_schild_l test - non perturbed
-  // auto kerr_schild_l = spatial_coords<Frame::Inertial>(used_for_size);
-  // sks_computer(make_not_null(&kerr_schild_l), make_not_null(&cache),
-  //              gr::Solutions::SphKerrSchild::internal_tags::kerr_schild_l<
-  //                  DataVector, Frame::Inertial>{});
+  // kerr_schild_l test - non perturbed
+  auto kerr_schild_l = spatial_coords<Frame::Inertial>(used_for_size);
+  sks_computer(make_not_null(&kerr_schild_l), make_not_null(&cache),
+               gr::Solutions::SphKerrSchild::internal_tags::kerr_schild_l<
+                   DataVector, Frame::Inertial>{});
 
-  // std::cout << "This is kerr_schild_l: "
-  //           << "\n"
-  //           << kerr_schild_l << "\n";
+  std::cout << "This is kerr_schild_l: "
+            << "\n"
+            << kerr_schild_l << "\n";
 
-  // // sph_kerr_schild)l_lower test - non perturbed
-  // tnsr::i<DataVector, 4, Frame::Inertial> sph_kerr_schild_l_lower{1_st,
-  // 0.}; sks_computer(
-  //     make_not_null(&sph_kerr_schild_l_lower), make_not_null(&cache),
-  //     gr::Solutions::SphKerrSchild::internal_tags::sph_kerr_schild_l_lower<
-  //         DataVector, Frame::Inertial>{});
+  // sph_kerr_schild)l_lower test - non perturbed
+  tnsr::i<DataVector, 4, Frame::Inertial> sph_kerr_schild_l_lower{
+      used_for_size};
+  sks_computer(
+      make_not_null(&sph_kerr_schild_l_lower), make_not_null(&cache),
+      gr::Solutions::SphKerrSchild::internal_tags::sph_kerr_schild_l_lower<
+          DataVector, Frame::Inertial>{});
 
-  // std::cout << "This is sph_kerr_schild_l_lower: "
-  //           << "\n"
-  //           << sph_kerr_schild_l_lower << "\n";
+  std::cout << "This is sph_kerr_schild_l_lower: "
+            << "\n"
+            << sph_kerr_schild_l_lower << "\n";
 
-  // // sph_kerr_schild_l_upper test - non perturbed
-  // tnsr::I<DataVector, 4, Frame::Inertial> sph_kerr_schild_l_upper{1_st,
-  // 0.}; sks_computer(
-  //     make_not_null(&sph_kerr_schild_l_upper), make_not_null(&cache),
-  //     gr::Solutions::SphKerrSchild::internal_tags::sph_kerr_schild_l_upper<
-  //         DataVector, Frame::Inertial>{});
+  // sph_kerr_schild_l_upper test - non perturbed
+  tnsr::I<DataVector, 4, Frame::Inertial> sph_kerr_schild_l_upper{
+      used_for_size};
+  sks_computer(
+      make_not_null(&sph_kerr_schild_l_upper), make_not_null(&cache),
+      gr::Solutions::SphKerrSchild::internal_tags::sph_kerr_schild_l_upper<
+          DataVector, Frame::Inertial>{});
 
-  // std::cout << "This is sph_kerr_schild_l_upper: "
-  //           << "\n"
-  //           << sph_kerr_schild_l_upper << "\n";
+  std::cout << "This is sph_kerr_schild_l_upper: "
+            << "\n"
+            << sph_kerr_schild_l_upper << "\n";
 
   //   FINITE DIFFERENCE FORMULA
 
