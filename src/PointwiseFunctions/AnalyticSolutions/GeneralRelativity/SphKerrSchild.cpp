@@ -624,7 +624,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
                 G1_dot_x.get(i) * G2_dot_x.get(j);
 
         for (size_t m = 0; m < 3; ++m) {
-          deriv_inv_jacobian->get(i, j, k) +=
+          deriv_inv_jacobian->get(k, i, j) +=
               matrix_E1.get(i, m) * x_sph_minus_center.get(m) *
                   G2_dot_x.get(j) * x_sph_minus_center.get(k) / r +
               G1_dot_x.get(i) * x_sph_minus_center.get(k) *
@@ -677,9 +677,9 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
   const tnsr::I<DataType, 3, Frame>& x_kerr_schild =
       cache->get_var(*this, internal_tags::x_kerr_schild<DataType, Frame>{});
-  // auto cross_tensor = make_with_value<tnsr::i<DataType, 3, Frame>>(1_st,
-  // 0.0);
-  auto spin_tensor = make_with_value<tnsr::i<DataType, 3, Frame>>(1_st, 0.0);
+
+  auto spin_tensor = make_with_value<tnsr::i<DataType, 3, Frame>>(
+      get_size(get_element(x_kerr_schild, 0)), 0.0);
 
   // a_cross_x Calculation
   for (size_t m = 0; m < get_size(get_element(x_kerr_schild, 0)); ++m) {
