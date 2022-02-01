@@ -67,18 +67,19 @@ using Affine3D = domain::CoordinateMaps::ProductOf3Maps<Affine, Affine, Affine>;
 template <typename Frame, typename DataType>
 tnsr::I<DataType, 3, Frame> spatial_coords(const DataType& used_for_size) {
   auto x = make_with_value<tnsr::I<DataType, 3, Frame>>(used_for_size, 0.0);
-  get<0>(x)[0] = 1.1001;
-  get<0>(x)[1] = 1.1;
+  const double dx_i = .0001;
+  get<0>(x)[0] = 1.1;
+  get<0>(x)[1] = 1.1 + dx_i;
   get<0>(x)[2] = 1.1;
   get<0>(x)[3] = 1.1;
   get<1>(x)[0] = 3.2;
-  get<1>(x)[1] = 3.2001;
-  get<1>(x)[2] = 3.2;
+  get<1>(x)[1] = 3.2;
+  get<1>(x)[2] = 3.2 + dx_i;
   get<1>(x)[3] = 3.2;
   get<2>(x)[0] = 5.3;
   get<2>(x)[1] = 5.3;
-  get<2>(x)[2] = 5.3001;
-  get<2>(x)[3] = 5.3;
+  get<2>(x)[2] = 5.3;
+  get<2>(x)[3] = 5.3 + dx_i;
   return x;
 }
 
@@ -350,35 +351,29 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
             << "\n"
             << sph_kerr_schild_l_upper << "\n";
 
-  //   FINITE DIFFERENCE FORMULA
+  //   FINITE DIFFERENCE TESTS
 
   pypp::SetupLocalPythonEnvironment local_python_env(
       "PointwiseFunctions/AnalyticSolutions/GeneralRelativity/");
+  Approx finite_difference_approx = Approx::custom().epsilon(1e-6).scale(1.0);
 
+  // JACOBIAN TEST
   const tnsr::I<DataVector, 3, Frame::Inertial>& pert_coords_wrong_type =
       cache.get_var(sks_computer,
                     gr::Solutions::SphKerrSchild::internal_tags::x_kerr_schild<
                         DataVector, Frame::Inertial>{});
   tnsr::Ij<DataVector, 3, Frame::Inertial> pert_coords_right_type{1_st, 0.};
   for (size_t i = 0; i < 3; ++i) {
-    for (size_t j = 0; j < 3; ++j) {
-      pert_coords_right_type.get(i, j) = pert_coords_wrong_type[i][j];
+    for (size_t j = 1; j < 4; ++j) {
+      pert_coords_right_type.get(i, j - 1) = pert_coords_wrong_type[i][j];
     }
   }
 
   auto input_coords =
       make_with_value<tnsr::I<double, 3, Frame::Inertial>>(1, 0.0);
-  input_coords[0] = pert_coords_wrong_type[0][3];
-  input_coords[1] = pert_coords_wrong_type[1][3];
-  input_coords[2] = pert_coords_wrong_type[2][3];
-
-  std::cout << "Pert coords"
-            << "\n"
-            << pert_coords_right_type << "\n";
-
-  std::cout << "Input coords"
-            << "\n"
-            << input_coords << "\n";
+  input_coords[0] = pert_coords_wrong_type[0][0];
+  input_coords[1] = pert_coords_wrong_type[1][0];
+  input_coords[2] = pert_coords_wrong_type[2][0];
 
   auto perturbation =
       make_with_value<tnsr::I<double, 3, Frame::Inertial>>(1, 0.0001);
@@ -386,7 +381,15 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       pypp::call<tnsr::Ij<DataVector, 3, Frame::Inertial>>(
           "General_Finite_Difference", "check_finite_difference", input_coords,
           pert_coords_right_type, perturbation);
-  std::cout << "Finite Difference Output"
-            << "\n"
-            << finite_diff_jacobian << "\n";
+
+  tnsr::Ij<DataVector, 3, Frame::Inertial> input_coords_jacobian{1_st, 0.};
+
+  // Selects the jacobian for the input coords out of the jacobian matrix with 4
+  // sets of coordiantes
+  for (size_t i = 0; i < 9; i++) {
+    input_coords_jacobian.get(i % 3, i / 3) = jacobian[i][0];
+  }
+
+  CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_jacobian, input_coords_jacobian,
+                               finite_difference_approx);
 }
