@@ -23,8 +23,8 @@
 #include "Utilities/StdArrayHelpers.hpp"
 #include "Utilities/StdHelpers.hpp"
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 namespace gr::Solutions {
 
@@ -779,6 +779,61 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
             get_element(kerr_schild_l.get(i), s);
       }
     }
+  }
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<tnsr::I<DataType, 4, Frame>*> deriv_H,
+    const gsl::not_null<CachedBuffer*> cache,
+    internal_tags::deriv_H<DataType, Frame> /*meta*/) const {
+  // Instantiations
+  const auto& r = get(cache->get_var(*this, internal_tags::r<DataType>{}));
+  const auto& a_dot_x =
+      get(cache->get_var(*this, internal_tags::a_dot_x<DataType>{}));
+  const auto& x_kerr_schild =
+      cache->get_var(*this, internal_tags::x_kerr_schild<DataType, Frame>{});
+  const auto& H = cache->get_var(*this, internal_tags::H<DataType>{});
+  const auto& jacobian =
+      cache->get_var(*this, internal_tags::jacobian<DataType, Frame>{});
+  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+
+  // deriv_H Calculation
+
+  deriv_H->get(0) = 0.;
+
+  for (size_t s = 0; s < get_size(get_element(x_kerr_schild, 0)); ++s) {
+    const double rboyer = get_element(r, s);
+    const double drden =
+        get_element(H[0], s) /
+        solution_.mass();  // H has M as a factor, but dr does not.
+
+    DataVector dr(3_st, 0.);
+    for (size_t i = 0; i < 3; ++i) {
+      dr[i] = drden *
+              (get_element(x_kerr_schild.get(i), s) +
+               get_element(a_dot_x, s) * gsl::at(spin_a, i) / square(rboyer));
+    }
+
+    const double Hden = 1. / (pow(rboyer, 4) + square(get_element(a_dot_x, s)));
+    const double fac = 3. / rboyer - 4. * cube(rboyer) * Hden;
+    for (size_t i = 0; i < 3; ++i) {
+      get_element(deriv_H->get(i + 1), s) =
+          get_element(H[0], s) *
+          (fac * dr[i] - 2. * Hden * get_element(a_dot_x, s) *
+                             gsl::at(spin_a, i));  // deriv_H in original KS
+    }
+
+    const double deriv_H_x = get_element(deriv_H->get(1), s);
+    const double deriv_H_y = get_element(deriv_H->get(2), s);
+    const double deriv_H_z = get_element(deriv_H->get(3), s);
+
+    for (size_t j = 0; j < 3; ++j) {
+      get_element(deriv_H->get(j + 1), s) =
+          get_element(jacobian.get(0, j), s) * deriv_H_x +
+          get_element(jacobian.get(1, j), s) * deriv_H_y +
+          get_element(jacobian.get(2, j), s) * deriv_H_z;
+    }  // deriv_H in Spherical KS
   }
 }
 

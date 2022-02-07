@@ -351,6 +351,17 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
             << "\n"
             << sph_kerr_schild_l_upper << "\n";
 
+  // deriv_H test - non perturbed
+  tnsr::I<DataVector, 4, Frame::Inertial> deriv_H{used_for_size};
+  sks_computer(
+      make_not_null(&deriv_H), make_not_null(&cache),
+      gr::Solutions::SphKerrSchild::internal_tags::deriv_H<DataVector,
+                                                           Frame::Inertial>{});
+
+  std::cout << "This is deriv_H: "
+            << "\n"
+            << deriv_H << "\n";
+
   //   FINITE DIFFERENCE TESTS
 
   pypp::SetupLocalPythonEnvironment local_python_env(
