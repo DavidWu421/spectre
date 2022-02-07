@@ -379,8 +379,8 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       make_with_value<tnsr::I<double, 3, Frame::Inertial>>(1, 0.0001);
   const auto finite_diff_jacobian =
       pypp::call<tnsr::Ij<DataVector, 3, Frame::Inertial>>(
-          "General_Finite_Difference", "check_finite_difference", input_coords,
-          pert_coords_right_type, perturbation);
+          "General_Finite_Difference", "check_finite_difference_rank1",
+          input_coords, pert_coords_right_type, perturbation);
 
   tnsr::Ij<DataVector, 3, Frame::Inertial> input_coords_jacobian{1_st, 0.};
 
@@ -391,5 +391,48 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   }
 
   CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_jacobian, input_coords_jacobian,
+                               finite_difference_approx);
+
+  // DERIV JACOBIAN TEST
+
+  const tnsr::Ij<DataVector, 3, Frame::Inertial>& pert_jacs_wrong_type =
+      cache.get_var(sks_computer,
+                    gr::Solutions::SphKerrSchild::internal_tags::jacobian<
+                        DataVector, Frame::Inertial>{});
+  auto input_jacs =
+      make_with_value<tnsr::Ij<double, 3, Frame::Inertial>>(1, 0.0);
+  auto pert_jacs_right_type =
+      make_with_value<tnsr::ijk<double, 3, Frame::Inertial>>(1, 0.0);
+
+  for (size_t l = 0; l < 9; ++l) {
+    input_jacs[l] = pert_jacs_wrong_type[l][0];
+  }
+
+  size_t q = 0;
+  size_t t = 0;
+  for (size_t i = 0; i < 27; ++i) {
+    pert_jacs_right_type[i] = pert_jacs_wrong_type[i % 9][t + 1];
+    q += 1;
+    if (q % 9 == 0) {
+      t += 1;
+    }
+  }
+
+  const auto finite_diff_deriv_jacobian =
+      pypp::call<tnsr::iJk<DataVector, 3, Frame::Inertial>>(
+          "General_Finite_Difference", "check_finite_difference_rank3",
+          input_jacs, pert_jacs_right_type, perturbation);
+
+  tnsr::iJk<DataVector, 3, Frame::Inertial> input_coords_deriv_jacobian{1_st,
+                                                                        0.};
+
+  // Selects the deriv jacobian for the input coords out of the deriv jacobian
+  // matrix with 4 sets of coordiantes
+  for (size_t i = 0; i < 27; i++) {
+    input_coords_deriv_jacobian[i] = deriv_jacobian[i][0];
+  }
+
+  CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_deriv_jacobian,
+                               input_coords_deriv_jacobian,
                                finite_difference_approx);
 }
