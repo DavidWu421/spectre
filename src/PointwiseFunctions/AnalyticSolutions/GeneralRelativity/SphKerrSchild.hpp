@@ -153,6 +153,8 @@ class SphKerrSchild : public AnalyticSolution<3_st>,
     using sph_kerr_schild_l_lower = ::Tags::Tempi<26, 4, Frame, DataType>;
     template <typename DataType, typename Frame = ::Frame::Inertial>
     using sph_kerr_schild_l_upper = ::Tags::TempI<27, 4, Frame, DataType>;
+    template <typename DataType, typename Frame = ::Frame::Inertial>
+    using deriv_H = ::Tags::TempI<28, 4, Frame, DataType>;
   };
 
   template <typename DataType, typename Frame = ::Frame::Inertial>
@@ -179,7 +181,8 @@ class SphKerrSchild : public AnalyticSolution<3_st>,
       internal_tags::a_cross_x<DataType, Frame>,
       internal_tags::kerr_schild_l<DataType, Frame>,
       internal_tags::sph_kerr_schild_l_lower<DataType, Frame>,
-      internal_tags::sph_kerr_schild_l_upper<DataType, Frame>>;
+      internal_tags::sph_kerr_schild_l_upper<DataType, Frame>,
+      internal_tags::deriv_H<DataType, Frame>>;
 
   template <typename DataType, typename Frame = ::Frame::Inertial>
   class IntermediateComputer {
@@ -304,6 +307,10 @@ class SphKerrSchild : public AnalyticSolution<3_st>,
         gsl::not_null<tnsr::I<DataType, 4, Frame>*> sph_kerr_schild_l_upper,
         gsl::not_null<CachedBuffer*> cache,
         internal_tags::sph_kerr_schild_l_upper<DataType, Frame> /*meta*/) const;
+
+    void operator()(gsl::not_null<tnsr::I<DataType, 4, Frame>*> deriv_H,
+                    gsl::not_null<CachedBuffer*> cache,
+                    internal_tags::deriv_H<DataType, Frame> /*meta*/) const;
 
    private:
     const SphKerrSchild& solution_;
