@@ -837,6 +837,96 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   }
 }
 
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<tnsr::Ij<DataType, 4, Frame>*> deriv_l,
+    const gsl::not_null<CachedBuffer*> cache,
+    internal_tags::deriv_l<DataType, Frame> /*meta*/) const {
+  const auto& x_kerr_schild =
+      cache->get_var(*this, internal_tags::x_kerr_schild<DataType, Frame>{});
+  const auto& r = get(cache->get_var(*this, internal_tags::r<DataType>{}));
+  const auto& a_dot_x =
+      get(cache->get_var(*this, internal_tags::a_dot_x<DataType>{}));
+  const auto& rho = get(cache->get_var(*this, internal_tags::rho<DataType>{}));
+  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto& kerr_schild_l =
+      cache->get_var(*this, internal_tags::kerr_schild_l<DataType, Frame>{});
+  const auto& H = cache->get_var(*this, internal_tags::H<DataType>{});
+  const auto& jacobian =
+      cache->get_var(*this, internal_tags::jacobian<DataType, Frame>{});
+  const auto& deriv_jacobian =
+      cache->get_var(*this, internal_tags::deriv_jacobian<DataType, Frame>{});
+
+  for (size_t i = 0; i < 4; ++i) {
+    deriv_l->get(i, 0) = 0.;
+    deriv_l->get(0, i) = 0.;
+  }
+
+  tnsr::ij<DataVector, 3, Frame> temp_deriv_l{
+      get_size(get_element(x_kerr_schild, 0)), 0.};
+
+  for (size_t s = 0; s < get_size(get_element(x_kerr_schild, 0)); ++s) {
+    const double den = 1. / square(get_element(rho, s));
+    const double rboyer = get_element(r, s);
+    const double drden = get_element(H[0], s) / solution_.mass();
+    DataVector dr(3, 0.);
+    for (size_t i = 0; i < 3; ++i) {
+      dr[i] = drden *
+              (get_element(x_kerr_schild.get(i), s) +
+               get_element(a_dot_x, s) * gsl::at(spin_a, i) / square(rboyer));
+    }
+
+    for (size_t i = 0; i < 3; ++i) {
+      for (size_t j = 0; j < 3; ++j) {
+        get_element(deriv_l->get(i + 1, j + 1), s) =
+            den *
+            ((get_element(x_kerr_schild.get(i), s) -
+              2. * rboyer * get_element(kerr_schild_l.get(i), s) -
+              get_element(a_dot_x, s) * gsl::at(spin_a, i) / square(rboyer)) *
+                 dr[j] +
+             gsl::at(spin_a, i) * gsl::at(spin_a, j) / rboyer);
+        if (i == j) {
+          get_element(deriv_l->get(i + 1, j + 1), s) += den * rboyer;
+        } else {  //  add den*epsilon^ijk a_k
+          size_t k = (j + 1) % 3;
+          if (k == i) {  // j+1 = i (cyclic), so choose minus sign
+            ++k;
+            k %= 3;  // and set k to be neither i nor j
+            get_element(deriv_l->get(i + 1, j + 1), s) -=
+                den * gsl::at(spin_a, k);
+          } else {  // i+1 = j (cyclic), so choose plus sign
+            get_element(deriv_l->get(i + 1, j + 1), s) +=
+                den * gsl::at(spin_a, k);
+          }
+        }
+      }
+    }
+
+    for (size_t j = 0; j < 3; ++j) {
+      for (size_t i = 0; i < 3; ++i) {
+        temp_deriv_l.get(i, j) = get_element(deriv_l->get(i + 1, j + 1), s);
+      }
+    }
+
+    for (size_t j = 0; j < 3; ++j) {
+      for (size_t i = 0; i < 3; ++i) {
+        get_element(deriv_l->get(i + 1, j + 1), s) = 0.;
+        for (size_t k = 0; k < 3; ++k) {
+          for (size_t m = 0; m < 3; ++m) {
+            get_element(deriv_l->get(i + 1, j + 1), s) +=
+                get_element(jacobian.get(k, i), s) *
+                get_element(jacobian.get(m, j), s) *
+                get_element(temp_deriv_l[k], m);
+          }
+          get_element(deriv_l->get(i + 1, j + 1), s) +=
+              get_element(kerr_schild_l.get(k), s) *
+              get_element(deriv_jacobian.get(k, i, j), s);
+        }
+      }
+    }
+  }
+}
+
 #define DTYPE(data) BOOST_PP_TUPLE_ELEM(0, data)
 #define FRAME(data) BOOST_PP_TUPLE_ELEM(1, data)
 
