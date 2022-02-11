@@ -362,6 +362,17 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
             << "\n"
             << deriv_H << "\n";
 
+  //   deriv_l - non perturbed
+  tnsr::Ij<DataVector, 4, Frame::Inertial> deriv_l{used_for_size};
+  sks_computer(
+      make_not_null(&deriv_l), make_not_null(&cache),
+      gr::Solutions::SphKerrSchild::internal_tags::deriv_l<DataVector,
+                                                           Frame::Inertial>{});
+
+  std::cout << "This is deriv_l: "
+            << "\n"
+            << deriv_l << "\n";
+
   //   FINITE DIFFERENCE TESTS
 
   pypp::SetupLocalPythonEnvironment local_python_env(
@@ -400,6 +411,10 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   for (size_t i = 0; i < 9; i++) {
     input_coords_jacobian.get(i % 3, i / 3) = jacobian[i][0];
   }
+
+  //   std::cout << "jacobian" << "\n" << jacobian << "\n" <<
+  //   "input_coords_jacobian" << "\n" << input_coords_jacobian << "\n" <<
+  //   "finite diff jacobian:" << finite_diff_jacobian << "\n";
 
   CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_jacobian, input_coords_jacobian,
                                finite_difference_approx);
@@ -445,5 +460,47 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
 
   CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_deriv_jacobian,
                                input_coords_deriv_jacobian,
+                               finite_difference_approx);
+
+  // DERIV_L TEST
+  // ONLY CALCULATES THE SPATIAL DERIVATIVES SINCE NO TIME EVOLUTION
+
+  const tnsr::i<DataVector, 4, Frame::Inertial>& pert_coords_wrong_type_l =
+      cache.get_var(
+          sks_computer,
+          gr::Solutions::SphKerrSchild::internal_tags::sph_kerr_schild_l_lower<
+              DataVector, Frame::Inertial>{});
+  tnsr::Ij<DataVector, 3, Frame::Inertial> pert_coords_right_type_l{1_st, 0.};
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = 1; j < 4; ++j) {
+      pert_coords_right_type_l.get(i, j - 1) =
+          pert_coords_wrong_type_l[i + 1][j];
+    }
+  }
+
+  auto input_coords_l =
+      make_with_value<tnsr::I<double, 3, Frame::Inertial>>(1, 0.0);
+  input_coords_l[0] = pert_coords_wrong_type_l[1][0];
+  input_coords_l[1] = pert_coords_wrong_type_l[2][0];
+  input_coords_l[2] = pert_coords_wrong_type_l[3][0];
+
+  auto perturbation_l =
+      make_with_value<tnsr::I<double, 3, Frame::Inertial>>(1, 0.0001);
+  const auto finite_diff_deriv_l =
+      pypp::call<tnsr::Ij<DataVector, 3, Frame::Inertial>>(
+          "General_Finite_Difference", "check_finite_difference_rank1",
+          input_coords_l, pert_coords_right_type_l, perturbation_l);
+
+  tnsr::Ij<DataVector, 3, Frame::Inertial> input_coords_deriv_l{1_st, 0.};
+
+  // Selects the deriv_l for the input coords l out of the deriv_l matrix with 4
+  // sets of coordiantes
+  for (size_t i = 0; i < 12; i++) {
+    if (i % 4 != 0) {
+      input_coords_deriv_l.get((i - 1) % 4, (i - 1) / 4) = deriv_l[i + 4][0];
+    }
+  }
+
+  CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_deriv_l, input_coords_deriv_l,
                                finite_difference_approx);
 }
