@@ -646,7 +646,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
       get(cache->get_var(*this, internal_tags::a_dot_x<DataType>{}));
 
   // H Calculation
-  get(*H) = solution_.mass() * cube(r) / pow(r, 4) + square(a_dot_x);
+  get(*H) = solution_.mass() * cube(r) / (pow(r, 4) + square(a_dot_x));
 }
 
 template <typename DataType, typename Frame>
@@ -839,7 +839,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
 template <typename DataType, typename Frame>
 void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
-    const gsl::not_null<tnsr::Ij<DataType, 4, Frame>*> deriv_l,
+    const gsl::not_null<tnsr::ij<DataType, 4, Frame>*> deriv_l,
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::deriv_l<DataType, Frame> /*meta*/) const {
   const auto& x_kerr_schild =

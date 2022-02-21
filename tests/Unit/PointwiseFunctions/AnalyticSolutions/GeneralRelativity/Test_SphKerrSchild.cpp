@@ -297,6 +297,15 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
             << "\n"
             << deriv_inv_jacobian << "\n";
 
+  //  H test - non perturbed
+  Scalar<DataVector> H{0.};
+  sks_computer(make_not_null(&H), make_not_null(&cache),
+               gr::Solutions::SphKerrSchild::internal_tags::H<DataVector>{});
+
+  std::cout << "This is scalar H: "
+            << "\n"
+            << H << "\n";
+
   // x_kerr_schild test - non perturbed
   auto x_kerr_schild = spatial_coords<Frame::Inertial>(used_for_size);
   sks_computer(make_not_null(&x_kerr_schild), make_not_null(&cache),
@@ -363,7 +372,7 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
             << deriv_H << "\n";
 
   //   deriv_l - non perturbed
-  tnsr::Ij<DataVector, 4, Frame::Inertial> deriv_l{used_for_size};
+  tnsr::ij<DataVector, 4, Frame::Inertial> deriv_l{used_for_size};
   sks_computer(
       make_not_null(&deriv_l), make_not_null(&cache),
       gr::Solutions::SphKerrSchild::internal_tags::deriv_l<DataVector,
@@ -412,10 +421,6 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
     input_coords_jacobian.get(i % 3, i / 3) = jacobian[i][0];
   }
 
-  //   std::cout << "jacobian" << "\n" << jacobian << "\n" <<
-  //   "input_coords_jacobian" << "\n" << input_coords_jacobian << "\n" <<
-  //   "finite diff jacobian:" << finite_diff_jacobian << "\n";
-
   CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_jacobian, input_coords_jacobian,
                                finite_difference_approx);
 
@@ -446,7 +451,7 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
 
   const auto finite_diff_deriv_jacobian =
       pypp::call<tnsr::iJk<DataVector, 3, Frame::Inertial>>(
-          "General_Finite_Difference", "check_finite_difference_rank3",
+          "General_Finite_Difference", "check_finite_difference_rank2",
           input_jacs, pert_jacs_right_type, perturbation);
 
   tnsr::iJk<DataVector, 3, Frame::Inertial> input_coords_deriv_jacobian{1_st,
@@ -460,6 +465,33 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
 
   CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_deriv_jacobian,
                                input_coords_deriv_jacobian,
+                               finite_difference_approx);
+
+  // DERIV_H TEST
+
+  auto pert_coords_wrong_type_H = cache.get_var(
+      sks_computer,
+      gr::Solutions::SphKerrSchild::internal_tags::H<DataVector>{});
+  tnsr::I<DataVector, 3, Frame::Inertial> pert_coords_right_type_H{1_st, 0.};
+  for (size_t i = 0; i < 3; ++i) {
+    pert_coords_right_type_H.get(i) = pert_coords_wrong_type_H[0][i + 1];
+  }
+
+  //   auto input_coords_H = make_with_value<Scalar<DataVector>>(1_st, 0.0);
+  tnsr::I<DataVector, 1, Frame::Inertial> input_coords_H{1_st, 0.};
+  input_coords_H[0] = pert_coords_wrong_type_H[0][0];
+
+  const auto finite_diff_deriv_H =
+      pypp::call<tnsr::I<DataVector, 3, Frame::Inertial>>(
+          "General_Finite_Difference", "check_finite_difference_rank0",
+          input_coords_H, pert_coords_right_type_H, perturbation);
+
+  tnsr::I<DataVector, 3, Frame::Inertial> input_coords_deriv_H{1_st, 0.};
+  for (size_t i = 0; i < 3; i++) {
+    input_coords_deriv_H[i] = deriv_H[i + 1][0];
+  }
+
+  CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_deriv_H, input_coords_deriv_H,
                                finite_difference_approx);
 
   // DERIV_L TEST
@@ -503,4 +535,11 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
 
   CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_deriv_l, input_coords_deriv_l,
                                finite_difference_approx);
+
+  // const std::array<double, 3> lower_bound{{0.82, 1.24, 1.32}};
+  // const size_t grid_size = 8;
+  // const std::array<double, 3> upper_bound{{0.8, 1.22, 1.30}};
+  // TestHelpers::VerifyGrSolution::verify_time_independent_einstein_solution(
+  //     solution, grid_size, lower_bound, upper_bound,
+  //     std::numeric_limits<double>::epsilon() * 1.e5);
 }

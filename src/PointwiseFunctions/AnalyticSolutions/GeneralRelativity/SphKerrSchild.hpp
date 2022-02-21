@@ -156,7 +156,7 @@ class SphKerrSchild : public AnalyticSolution<3_st>,
     template <typename DataType, typename Frame = ::Frame::Inertial>
     using deriv_H = ::Tags::TempI<28, 4, Frame, DataType>;
     template <typename DataType, typename Frame = ::Frame::Inertial>
-    using deriv_l = ::Tags::TempIj<28, 4, Frame, DataType>;
+    using deriv_l = ::Tags::Tempij<28, 4, Frame, DataType>;
   };
 
   template <typename DataType, typename Frame = ::Frame::Inertial>
@@ -315,7 +315,7 @@ class SphKerrSchild : public AnalyticSolution<3_st>,
                     gsl::not_null<CachedBuffer*> cache,
                     internal_tags::deriv_H<DataType, Frame> /*meta*/) const;
 
-    void operator()(gsl::not_null<tnsr::Ij<DataType, 4, Frame>*> deriv_l,
+    void operator()(gsl::not_null<tnsr::ij<DataType, 4, Frame>*> deriv_l,
                     gsl::not_null<CachedBuffer*> cache,
                     internal_tags::deriv_l<DataType, Frame> /*meta*/) const;
 
