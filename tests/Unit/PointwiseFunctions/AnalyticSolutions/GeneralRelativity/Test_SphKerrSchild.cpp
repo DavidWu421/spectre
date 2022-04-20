@@ -68,18 +68,18 @@ template <typename Frame, typename DataType>
 tnsr::I<DataType, 3, Frame> spatial_coords(const DataType& used_for_size) {
   auto x = make_with_value<tnsr::I<DataType, 3, Frame>>(used_for_size, 0.0);
   const double dx_i = .0001;
-  get<0>(x)[0] = 1.1;
-  get<0>(x)[1] = 1.1 + dx_i;
-  get<0>(x)[2] = 1.1;
-  get<0>(x)[3] = 1.1;
-  get<1>(x)[0] = 3.2;
-  get<1>(x)[1] = 3.2;
-  get<1>(x)[2] = 3.2 + dx_i;
-  get<1>(x)[3] = 3.2;
-  get<2>(x)[0] = 5.3;
-  get<2>(x)[1] = 5.3;
-  get<2>(x)[2] = 5.3;
-  get<2>(x)[3] = 5.3 + dx_i;
+  get<0>(x)[0] = 4.;
+  get<0>(x)[1] = 4. + dx_i;
+  get<0>(x)[2] = 4.;
+  get<0>(x)[3] = 4.;
+  get<1>(x)[0] = 3.;
+  get<1>(x)[1] = 3.;
+  get<1>(x)[2] = 3. + dx_i;
+  get<1>(x)[3] = 3.;
+  get<2>(x)[0] = 2.;
+  get<2>(x)[1] = 2.;
+  get<2>(x)[2] = 2.;
+  get<2>(x)[3] = 2. + dx_i;
   return x;
 }
 
@@ -92,9 +92,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   const DataVector used_for_size(4);
 
   const size_t used_for_sizet = used_for_size.size();
-  const double mass = 1.01;
-  const std::array<double, 3> spin{{0.2, 0.3, 0.4}};
-  const std::array<double, 3> center{{0.1, 1.2, 2.3}};
+  const double mass = 0.5;
+  const std::array<double, 3> spin{{0.1, -0.3, 0.2}};
+  const std::array<double, 3> center{{2.0, 3.0, 4.0}};
 
   // non perturbed spatial coordinates
   const auto x = spatial_coords<Frame::Inertial>(used_for_size);
@@ -424,6 +424,8 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_jacobian, input_coords_jacobian,
                                finite_difference_approx);
 
+  std::cout << "finite diff jacobian: " << finite_diff_jacobian << "\n";
+
   // DERIV JACOBIAN TEST
 
   const tnsr::Ij<DataVector, 3, Frame::Inertial>& pert_jacs_wrong_type =
@@ -536,10 +538,120 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_deriv_l, input_coords_deriv_l,
                                finite_difference_approx);
 
+  std::cout << "This is finite diff deriv_l:"
+            << "\n"
+            << finite_diff_deriv_l << "\n";
+  std::cout << "This is input_coords_l:"
+            << "\n"
+            << input_coords_l << "\n";
+  std::cout << "This is deriv_l: "
+            << "\n"
+            << deriv_l << "\n";
+
   // const std::array<double, 3> lower_bound{{0.82, 1.24, 1.32}};
   // const size_t grid_size = 8;
   // const std::array<double, 3> upper_bound{{0.8, 1.22, 1.30}};
   // TestHelpers::VerifyGrSolution::verify_time_independent_einstein_solution(
   //     solution, grid_size, lower_bound, upper_bound,
   //     std::numeric_limits<double>::epsilon() * 1.e5);
+
+  // FINITE DIFFERENCE TEST
+
+  // Tests f(X,Y,Z) = (X^1+Y^2+Z^3, 2X^2+3Y+Z, 3X^1+2Y^3+5Z^3) with X=1.1,
+  // Y=2.2, Z=3.3
+  double X = 1.1;
+  double Y = 2.2;
+  double Z = 3.3;
+  double Xdx = 1.1 + .0001;
+  double Ydx = 2.2 + .0001;
+  double Zdx = 3.3 + .0001;
+
+  auto input_vector =
+      make_with_value<tnsr::I<double, 3, Frame::Inertial>>(1, 0.0);
+  input_vector[0] = pow(X, 1) + pow(Y, 2) + pow(Z, 3);
+  input_vector[1] = 2 * pow(X, 2) + 3 * pow(Y, 1) + pow(Z, 1);
+  input_vector[2] = 3 * pow(X, 1) + 2 * pow(Y, 3) + 5 * pow(Z, 3);
+
+  tnsr::Ij<DataVector, 3, Frame::Inertial> pert_matrix{1_st, 0.};
+  pert_matrix.get(0, 0) = pow(Xdx, 1) + pow(Y, 2) + pow(Z, 3);
+  pert_matrix.get(1, 0) = 2 * pow(Xdx, 2) + 3 * pow(Y, 1) + pow(Z, 1);
+  pert_matrix.get(2, 0) = 3 * pow(Xdx, 1) + 2 * pow(Y, 3) + 5 * pow(Z, 3);
+  pert_matrix.get(0, 1) = pow(X, 1) + pow(Ydx, 2) + pow(Z, 3);
+  pert_matrix.get(1, 1) = 2 * pow(X, 2) + 3 * pow(Ydx, 1) + pow(Z, 1);
+  pert_matrix.get(2, 1) = 3 * pow(X, 1) + 2 * pow(Ydx, 3) + 5 * pow(Z, 3);
+  pert_matrix.get(0, 2) = pow(X, 1) + pow(Y, 2) + pow(Zdx, 3);
+  pert_matrix.get(1, 2) = 2 * pow(X, 2) + 3 * pow(Y, 1) + pow(Zdx, 1);
+  pert_matrix.get(2, 2) = 3 * pow(X, 1) + 2 * pow(Y, 3) + 5 * pow(Zdx, 3);
+
+  auto perturbation_vector =
+      make_with_value<tnsr::I<double, 3, Frame::Inertial>>(1, 0.0001);
+
+  const auto test_jacobian =
+      pypp::call<tnsr::Ij<DataVector, 3, Frame::Inertial>>(
+          "General_Finite_Difference", "check_finite_difference_rank1",
+          input_vector, pert_matrix, perturbation_vector);
+
+  std::cout << "This is the test func jacobian: " << test_jacobian << "\n";
+
+  tnsr::Ij<DataVector, 3, Frame::Inertial> real_jac{1_st, 0.};
+  real_jac.get(0, 0) = 1;
+  real_jac.get(1, 0) = 4 * X;
+  real_jac.get(2, 0) = 3 * X;
+  real_jac.get(0, 1) = 2 * Y;
+  real_jac.get(1, 1) = 3;
+  real_jac.get(2, 1) = 6 * pow(Y, 2);
+  real_jac.get(0, 2) = 3 * pow(Z, 2);
+  real_jac.get(1, 2) = 1;
+  real_jac.get(2, 2) = 15 * pow(Z, 2);
+
+  std::cout << "This is the real func jacobian: " << real_jac << "\n";
+
+  // // Tests f(X,Y,Z) = (X^4+Y^5+Z^6, X^7+Y^8+Z^9, X^1+Y^2+Z^3) with
+  // X=1.1,Y=2.2, Z=3.3
+  //   double X = 1.1;
+  //   double Y = 2.2;
+  //   double Z = 3.3;
+  //   double Xdx = 1.1+.0001;
+  //   double Ydx = 2.2+.0001;
+  //   double Zdx = 3.3+.0001;
+
+  //   auto input_vector =
+  //     make_with_value<tnsr::I<double, 3, Frame::Inertial>>(1, 0.0);
+  //   input_vector[0] = pow(X,4)+pow(Y,5)+pow(Z,6);
+  //   input_vector[1] = pow(X,7)+pow(Y,8)+pow(Z,9);
+  //   input_vector[2] = pow(X,1)+pow(Y,2)+pow(Z,3);
+
+  //   tnsr::Ij<DataVector, 3, Frame::Inertial> pert_matrix{1_st, 0.};
+  //   pert_matrix.get(0,0) = pow(Xdx,4)+pow(Y,5)+pow(Z,6);
+  //   pert_matrix.get(1,0) = pow(Xdx,7)+pow(Y,8)+pow(Z,9);
+  //   pert_matrix.get(2,0) = pow(Xdx,1)+pow(Y,2)+pow(Z,3);
+  //   pert_matrix.get(0,1) = pow(X,4)+pow(Ydx,5)+pow(Z,6);
+  //   pert_matrix.get(1,1) = pow(X,7)+pow(Ydx,8)+pow(Z,9);
+  //   pert_matrix.get(2,1) = pow(X,1)+pow(Ydx,2)+pow(Z,3);
+  //   pert_matrix.get(0,2) = pow(X,4)+pow(Y,5)+pow(Zdx,6);
+  //   pert_matrix.get(1,2) = pow(X,7)+pow(Y,8)+pow(Zdx,9);
+  //   pert_matrix.get(2,2) = pow(X,1)+pow(Y,2)+pow(Zdx,3);
+
+  //   auto perturbation_vector =
+  //       make_with_value<tnsr::I<double, 3, Frame::Inertial>>(1, 0.0001);
+
+  //   const auto test_jacobian =
+  //       pypp::call<tnsr::Ij<DataVector, 3, Frame::Inertial>>(
+  //           "General_Finite_Difference", "check_finite_difference_rank1",
+  //           input_vector, pert_matrix, perturbation_vector);
+
+  //   std::cout << "This is the test func jacobian: " << test_jacobian << "\n";
+
+  //   tnsr::Ij<DataVector, 3, Frame::Inertial> real_jac{1_st, 0.};
+  //   real_jac.get(0,0) = 4*pow(X,3);
+  //   real_jac.get(1,0) = 7*pow(X,6);
+  //   real_jac.get(2,0) = 1;
+  //   real_jac.get(0,1) = 5*pow(Y,4);
+  //   real_jac.get(1,1) = 8*pow(Y,7);
+  //   real_jac.get(2,1) = 2*Y;
+  //   real_jac.get(0,2) = 6*pow(Z,5);
+  //   real_jac.get(1,2) = 9*pow(Z,8);
+  //   real_jac.get(2,2) = 3*pow(Z,2);
+
+  //   std::cout << "This is the real func jacobian: " << real_jac << "\n";
 }
