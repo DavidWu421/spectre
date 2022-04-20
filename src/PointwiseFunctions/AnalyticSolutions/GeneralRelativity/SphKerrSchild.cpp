@@ -110,7 +110,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::rho<DataType> /*meta*/) const {
   // Instantiations
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   std::cout << "This is spin_a: "
             << "\n"
             << spin_a << "\n";
@@ -121,6 +121,10 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
   // rho Calculation
   get(*rho) = sqrt(r_squared + a_squared);
+
+  std::cout << "This is a_squared: "
+            << "\n"
+            << a_squared << "\n";
 }
 
 template <typename DataType, typename Frame>
@@ -129,7 +133,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::matrix_F<DataType, Frame> /*meta*/) const {
   // Instantiations
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const auto a_squared =
       std::inner_product(spin_a.begin(), spin_a.end(), spin_a.begin(), 0.);
   const auto& rho = get(cache->get_var(*this, internal_tags::rho<DataType>{}));
@@ -160,7 +164,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::matrix_P<DataType, Frame> /*meta*/) const {
   // Instantiations
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const auto& rho = get(cache->get_var(*this, internal_tags::rho<DataType>{}));
   const auto& r = get(cache->get_var(*this, internal_tags::r<DataType>{}));
 
@@ -213,7 +217,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::matrix_D<DataType, Frame> /*meta*/) const {
   // Instantiations
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const auto a_squared =
       std::inner_product(spin_a.begin(), spin_a.end(), spin_a.begin(), 0.);
   const auto& rho = get(cache->get_var(*this, internal_tags::rho<DataType>{}));
@@ -301,7 +305,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::matrix_Q<DataType, Frame> /*meta*/) const {
   // Instantiations
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const auto& rho = get(cache->get_var(*this, internal_tags::rho<DataType>{}));
   const auto& r = get(cache->get_var(*this, internal_tags::r<DataType>{}));
 
@@ -330,7 +334,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::matrix_G1<DataType, Frame> /*meta*/) const {
   // Instantiations
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const auto a_squared =
       std::inner_product(spin_a.begin(), spin_a.end(), spin_a.begin(), 0.);
   const auto& rho = get(cache->get_var(*this, internal_tags::rho<DataType>{}));
@@ -363,7 +367,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   // Instantiations
   const auto& x_sph_minus_center = cache->get_var(
       *this, internal_tags::x_sph_minus_center<DataType, Frame>{});
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
 
   // a_dot_x Calculation
   get(*a_dot_x) = spin_a[0] * get<0>(x_sph_minus_center) +
@@ -527,7 +531,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   const auto& rho = get(cache->get_var(*this, internal_tags::rho<DataType>{}));
   const auto& r_squared =
       get(cache->get_var(*this, internal_tags::r_squared<DataType>{}));
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const auto a_squared =
       std::inner_product(spin_a.begin(), spin_a.end(), spin_a.begin(), 0.);
 
@@ -554,7 +558,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     internal_tags::matrix_E2<DataType, Frame> /*meta*/) const {
   // Instantiations
   const auto& rho = get(cache->get_var(*this, internal_tags::rho<DataType>{}));
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const auto a_squared =
       std::inner_product(spin_a.begin(), spin_a.end(), spin_a.begin(), 0.);
   const auto& r = get(cache->get_var(*this, internal_tags::r<DataType>{}));
@@ -589,7 +593,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::deriv_inv_jacobian<DataType, Frame> /*meta*/) const {
   // Instantiations
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const auto& matrix_D =
       cache->get_var(*this, internal_tags::matrix_D<DataType, Frame>{});
   const auto& matrix_G1 =
@@ -647,6 +651,8 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
   // H Calculation
   get(*H) = solution_.mass() * cube(r) / (pow(r, 4) + square(a_dot_x));
+
+  std::cout << "this is the mass: " << solution_.mass() << "\n";
 }
 
 template <typename DataType, typename Frame>
@@ -654,7 +660,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<tnsr::I<DataType, 3, Frame>*> x_kerr_schild,
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::x_kerr_schild<DataType, Frame> /*meta*/) const {
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const auto& x_sph_minus_center = cache->get_var(
       *this, internal_tags::x_sph_minus_center<DataType, Frame>{});
   const auto& a_dot_x =
@@ -674,7 +680,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::a_cross_x<DataType, Frame> /*meta*/) const {
   // Instantiations
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const tnsr::I<DataType, 3, Frame>& x_kerr_schild =
       cache->get_var(*this, internal_tags::x_kerr_schild<DataType, Frame>{});
 
@@ -700,7 +706,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<CachedBuffer*> cache,
     internal_tags::kerr_schild_l<DataType, Frame> /*meta*/) const {
   // Instantiations
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   const auto& a_dot_x =
       get(cache->get_var(*this, internal_tags::a_dot_x<DataType>{}));
   const auto& r = get(cache->get_var(*this, internal_tags::r<DataType>{}));
@@ -796,7 +802,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   const auto& H = cache->get_var(*this, internal_tags::H<DataType>{});
   const auto& jacobian =
       cache->get_var(*this, internal_tags::jacobian<DataType, Frame>{});
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
 
   // deriv_H Calculation
 
@@ -942,7 +948,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   const auto& a_dot_x =
       get(cache->get_var(*this, internal_tags::a_dot_x<DataType>{}));
   const auto& rho = get(cache->get_var(*this, internal_tags::rho<DataType>{}));
-  const auto spin_a = solution_.dimensionless_spin() * solution_.mass();
+  const auto spin_a = solution_.dimensionless_spin();
   // const auto& kerr_schild_l =
   //     cache->get_var(*this, internal_tags::kerr_schild_l<DataType, Frame>{});
   const auto& H = cache->get_var(*this, internal_tags::H<DataType>{});
@@ -970,18 +976,28 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const double drden = get_element(H[0], s) / solution_.mass();
     DataVector dr(3, 0.);
     for (size_t i = 0; i < 3; ++i) {
-      dr[i] = drden * get_element(x_kerr_schild.get(i), s) +
-              get_element(a_dot_x, s) * gsl::at(spin_a, i) / square(rboyer);
+      dr[i] = drden *
+              (get_element(x_kerr_schild.get(i), s) +
+               get_element(a_dot_x, s) * gsl::at(spin_a, i) / square(rboyer));
     }
+
+    std::cout << "This is H[0][s]: " << get_element(H[0], s) << "\n";
+    std::cout << "This is drden:"
+              << "\n"
+              << drden << "\n";
+    std::cout << "This is dr:"
+              << "\n"
+              << dr << "\n";
+
     for (int i = 0; i < 3; ++i) {
       ks_l_for_deriv_l.get(i) =
           den * (rboyer * get_element(x_kerr_schild.get(i), s) +
                  get_element(a_dot_x, s) * gsl::at(spin_a, i) / rboyer -
                  get_element(a_cross_x.get(i), s));
     }
-    std::cout << "ks_l_for_deriv_l:"
-              << "\n"
-              << ks_l_for_deriv_l << "\n";
+    // std::cout << "ks_l_for_deriv_l:"
+    //           << "\n"
+    //           << ks_l_for_deriv_l << "\n";
 
     for (size_t i = 0; i < 3; ++i) {
       for (size_t j = 0; j < 3; ++j) {
@@ -992,12 +1008,6 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
               get_element(a_dot_x, s) * gsl::at(spin_a, i) / square(rboyer)) *
                  dr[j] +
              gsl::at(spin_a, i) * gsl::at(spin_a, j) / rboyer);
-        std::cout << "KERR SCHILD L:"
-                  << "\n"
-                  << ks_l_for_deriv_l << "\n";
-        std::cout << "KERR SCHILD L(i,s):"
-                  << "\n"
-                  << ks_l_for_deriv_l.get(i) << "\n";
         if (i == j) {
           get_element(deriv_l->get(i + 1, j + 1), s) += den * rboyer;
         } else {  //  add den*epsilon^ijk a_k
@@ -1020,6 +1030,9 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
         temp_deriv_l.get(i, j) = get_element(deriv_l->get(i + 1, j + 1), s);
       }
     }
+    std::cout << "temp_deriv_l: "
+              << "\n"
+              << temp_deriv_l << "\n";
 
     for (size_t j = 0; j < 3; ++j) {
       for (size_t i = 0; i < 3; ++i) {
@@ -1029,14 +1042,16 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
             get_element(deriv_l->get(i + 1, j + 1), s) +=
                 get_element(jacobian.get(k, i), s) *
                 get_element(jacobian.get(m, j), s) *
-                get_element(temp_deriv_l[k], m);
+                get_element(temp_deriv_l.get(m, k), s);
           }
           get_element(deriv_l->get(i + 1, j + 1), s) +=
               ks_l_for_deriv_l.get(k) *
-              get_element(deriv_jacobian.get(k, i, j), s);
+              get_element(deriv_jacobian.get(j, k, i), s);
         }
       }
     }
+    std::cout << "This is ks_l_for_deriv_l: " << ks_l_for_deriv_l << "\n";
+    std::cout << "This is den: " << den << "\n";
   }
 }
 
