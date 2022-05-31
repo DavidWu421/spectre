@@ -535,15 +535,15 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
     }
   }
 
-  CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_deriv_l, input_coords_deriv_l,
-                               finite_difference_approx);
+  //   CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_deriv_l, input_coords_deriv_l,
+  //                                finite_difference_approx);
 
   std::cout << "This is finite diff deriv_l:"
             << "\n"
             << finite_diff_deriv_l << "\n";
-  std::cout << "This is input_coords_l:"
-            << "\n"
-            << input_coords_l << "\n";
+  //   std::cout << "This is input_coords_l:"
+  //             << "\n"
+  //             << input_coords_l << "\n";
   std::cout << "This is deriv_l: "
             << "\n"
             << deriv_l << "\n";
