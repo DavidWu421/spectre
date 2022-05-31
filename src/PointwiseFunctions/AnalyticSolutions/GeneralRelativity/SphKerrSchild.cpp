@@ -728,6 +728,8 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
                  get_element(a_cross_x.get(i), s));
     }
   }
+
+  std::cout << "This is kerr_schild_l" << kerr_schild_l << "\n";
 }
 
 template <typename DataType, typename Frame>
@@ -1001,7 +1003,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
     for (size_t i = 0; i < 3; ++i) {
       for (size_t j = 0; j < 3; ++j) {
-        get_element(deriv_l->get(i + 1, j + 1), s) =
+        get_element(deriv_l->get(j + 1, i + 1), s) =
             den *
             ((get_element(x_kerr_schild.get(i), s) -
               2. * rboyer * ks_l_for_deriv_l.get(i) -
@@ -1009,16 +1011,16 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
                  dr[j] +
              gsl::at(spin_a, i) * gsl::at(spin_a, j) / rboyer);
         if (i == j) {
-          get_element(deriv_l->get(i + 1, j + 1), s) += den * rboyer;
+          get_element(deriv_l->get(j + 1, i + 1), s) += den * rboyer;
         } else {  //  add den*epsilon^ijk a_k
           size_t k = (j + 1) % 3;
           if (k == i) {  // j+1 = i (cyclic), so choose minus sign
             ++k;
             k %= 3;  // and set k to be neither i nor j
-            get_element(deriv_l->get(i + 1, j + 1), s) -=
+            get_element(deriv_l->get(j + 1, i + 1), s) -=
                 den * gsl::at(spin_a, k);
           } else {  // i+1 = j (cyclic), so choose plus sign
-            get_element(deriv_l->get(i + 1, j + 1), s) +=
+            get_element(deriv_l->get(j + 1, i + 1), s) +=
                 den * gsl::at(spin_a, k);
           }
         }
@@ -1027,7 +1029,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
     for (size_t j = 0; j < 3; ++j) {
       for (size_t i = 0; i < 3; ++i) {
-        temp_deriv_l.get(i, j) = get_element(deriv_l->get(i + 1, j + 1), s);
+        temp_deriv_l.get(j, i) = get_element(deriv_l->get(j + 1, i + 1), s);
       }
     }
     std::cout << "temp_deriv_l: "
@@ -1036,15 +1038,15 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
     for (size_t j = 0; j < 3; ++j) {
       for (size_t i = 0; i < 3; ++i) {
-        get_element(deriv_l->get(i + 1, j + 1), s) = 0.;
+        get_element(deriv_l->get(j + 1, i + 1), s) = 0.;
         for (size_t k = 0; k < 3; ++k) {
           for (size_t m = 0; m < 3; ++m) {
-            get_element(deriv_l->get(i + 1, j + 1), s) +=
+            get_element(deriv_l->get(j + 1, i + 1), s) +=
                 get_element(jacobian.get(k, i), s) *
                 get_element(jacobian.get(m, j), s) *
-                get_element(temp_deriv_l.get(m, k), s);
+                get_element(temp_deriv_l.get(k, m), s);
           }
-          get_element(deriv_l->get(i + 1, j + 1), s) +=
+          get_element(deriv_l->get(j + 1, i + 1), s) +=
               ks_l_for_deriv_l.get(k) *
               get_element(deriv_jacobian.get(j, k, i), s);
         }

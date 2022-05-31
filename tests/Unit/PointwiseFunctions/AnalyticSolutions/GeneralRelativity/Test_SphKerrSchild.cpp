@@ -94,7 +94,7 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   const size_t used_for_sizet = used_for_size.size();
   const double mass = 0.5;
   const std::array<double, 3> spin{{0.1, -0.3, 0.2}};
-  const std::array<double, 3> center{{2.0, 3.0, 4.0}};
+  const std::array<double, 3> center{{0.0, 0.0, 0.0}};
 
   // non perturbed spatial coordinates
   const auto x = spatial_coords<Frame::Inertial>(used_for_size);
