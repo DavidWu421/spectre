@@ -111,9 +111,9 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     internal_tags::rho<DataType> /*meta*/) const {
   // Instantiations
   const auto spin_a = solution_.dimensionless_spin();
-  std::cout << "This is spin_a: "
-            << "\n"
-            << spin_a << "\n";
+  // std::cout << "This is spin_a: "
+  //           << "\n"
+  //           << spin_a << "\n";
   const auto& r_squared =
       get(cache->get_var(*this, internal_tags::r_squared<DataType>{}));
   const auto a_squared =
@@ -121,10 +121,6 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
   // rho Calculation
   get(*rho) = sqrt(r_squared + a_squared);
-
-  std::cout << "This is a_squared: "
-            << "\n"
-            << a_squared << "\n";
 }
 
 template <typename DataType, typename Frame>
@@ -436,28 +432,6 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   }
 }
 
-// OTHER (INCORRECT) VERSION OF G1_DOT_X
-// template <typename DataType, typename Frame>
-// void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
-//     const gsl::not_null<tnsr::I<DataType, 3, Frame>*> G1_dot_x,
-//     const gsl::not_null<CachedBuffer*> cache,
-//     internal_tags::G1_dot_x<DataType, Frame> /*meta*/) const {
-//   const auto& x_sph_minus_center = cache->get_var(
-//       *this, internal_tags::x_sph_minus_center<DataType, Frame>{});
-//   const auto& matrix_G1 =
-//       cache->get_var(*this, internal_tags::matrix_G1<DataType, Frame>{});
-
-//   for (size_t i = 0; i < 3; ++i) {
-//     for (size_t m = 0; m < 3; ++m) {
-//       G1_dot_x->get(i) += matrix_G1.get(i, m) * x_sph_minus_center.get(m);
-//     }
-//   }
-
-//   std::cout << "this is G1_dot_x:"
-//             << "\n"
-//             << *G1_dot_x << "\n";
-// }
-
 template <typename DataType, typename Frame>
 void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<tnsr::i<DataType, 3, Frame>*> G2_dot_x,
@@ -477,28 +451,6 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     }
   }
 }
-
-// OTHER (INCORRECT) VERSION OF G2_dot_x
-// template <typename DataType, typename Frame>
-// void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
-//     const gsl::not_null<tnsr::i<DataType, 3, Frame>*> G2_dot_x,
-//     const gsl::not_null<CachedBuffer*> cache,
-//     internal_tags::G2_dot_x<DataType, Frame> /*meta*/) const {
-//   const auto& x_sph_minus_center =
-//       cache->get_var(*this, internal_tags::x_sph_minus_center<DataType,
-//       Frame>{});
-//   const auto& matrix_G2 =
-//       cache->get_var(*this, internal_tags::matrix_G2<DataType, Frame>{});
-
-//   for (size_t j = 0; j < 3; ++j) {
-//     for (size_t n = 0; n < 3; ++n) {
-//       G2_dot_x->get(j) += matrix_G2.get(n, j) * x_sph_minus_center.get(n);
-//     }
-//   }
-//   std::cout << "this is G2_dot_x:"
-//             << "\n"
-//             << *G2_dot_x << "\n";
-// }
 
 template <typename DataType, typename Frame>
 void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
@@ -651,8 +603,6 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
   // H Calculation
   get(*H) = solution_.mass() * cube(r) / (pow(r, 4) + square(a_dot_x));
-
-  std::cout << "this is the mass: " << solution_.mass() << "\n";
 }
 
 template <typename DataType, typename Frame>
@@ -728,8 +678,6 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
                  get_element(a_cross_x.get(i), s));
     }
   }
-
-  std::cout << "This is kerr_schild_l" << kerr_schild_l << "\n";
 }
 
 template <typename DataType, typename Frame>
@@ -845,100 +793,6 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   }
 }
 
-// template <typename DataType, typename Frame>
-// void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
-//     const gsl::not_null<tnsr::ij<DataType, 4, Frame>*> deriv_l,
-//     const gsl::not_null<CachedBuffer*> cache,
-//     internal_tags::deriv_l<DataType, Frame> /*meta*/) const {
-//   const auto& x_kerr_schild =
-//       cache->get_var(*this, internal_tags::x_kerr_schild<DataType, Frame>{});
-//   const auto& r = get(cache->get_var(*this, internal_tags::r<DataType>{}));
-//   const auto& a_dot_x =
-//       get(cache->get_var(*this, internal_tags::a_dot_x<DataType>{}));
-//   const auto& rho = get(cache->get_var(*this,
-//   internal_tags::rho<DataType>{})); const auto spin_a =
-//   solution_.dimensionless_spin() * solution_.mass(); const auto&
-//   kerr_schild_l =
-//       cache->get_var(*this, internal_tags::kerr_schild_l<DataType, Frame>{});
-//   const auto& H = cache->get_var(*this, internal_tags::H<DataType>{});
-//   const auto& jacobian =
-//       cache->get_var(*this, internal_tags::jacobian<DataType, Frame>{});
-//   const auto& deriv_jacobian =
-//       cache->get_var(*this, internal_tags::deriv_jacobian<DataType,
-//       Frame>{});
-
-//   for (size_t i = 0; i < 4; ++i) {
-//     deriv_l->get(i, 0) = 0.;
-//     deriv_l->get(0, i) = 0.;
-//   }
-
-//   tnsr::ij<DataVector, 3, Frame> temp_deriv_l{
-//       get_size(get_element(x_kerr_schild, 0)), 0.};
-
-//   for (size_t s = 0; s < get_size(get_element(x_kerr_schild, 0)); ++s) {
-//     const double den = 1. / square(get_element(rho, s));
-//     const double rboyer = get_element(r, s);
-//     const double drden = get_element(H[0], s) / solution_.mass();
-//     DataVector dr(3, 0.);
-//     for (size_t i = 0; i < 3; ++i) {
-//       dr[i] = drden *
-//               (get_element(x_kerr_schild.get(i), s) +
-//                get_element(a_dot_x, s) * gsl::at(spin_a, i) /
-//                square(rboyer));
-//     }
-
-//     for (size_t i = 0; i < 3; ++i) {
-//       for (size_t j = 0; j < 3; ++j) {
-//         get_element(deriv_l->get(i + 1, j + 1), s) =
-//             den *
-//             ((get_element(x_kerr_schild.get(i), s) -
-//               2. * rboyer * get_element(kerr_schild_l.get(i), s) -
-//               get_element(a_dot_x, s) * gsl::at(spin_a, i) / square(rboyer))
-//               *
-//                  dr[j] +
-//              gsl::at(spin_a, i) * gsl::at(spin_a, j) / rboyer);
-//         if (i == j) {
-//           get_element(deriv_l->get(i + 1, j + 1), s) += den * rboyer;
-//         } else {  //  add den*epsilon^ijk a_k
-//           size_t k = (j + 1) % 3;
-//           if (k == i) {  // j+1 = i (cyclic), so choose minus sign
-//             ++k;
-//             k %= 3;  // and set k to be neither i nor j
-//             get_element(deriv_l->get(i + 1, j + 1), s) -=
-//                 den * gsl::at(spin_a, k);
-//           } else {  // i+1 = j (cyclic), so choose plus sign
-//             get_element(deriv_l->get(i + 1, j + 1), s) +=
-//                 den * gsl::at(spin_a, k);
-//           }
-//         }
-//       }
-//     }
-
-//     for (size_t j = 0; j < 3; ++j) {
-//       for (size_t i = 0; i < 3; ++i) {
-//         temp_deriv_l.get(i, j) = get_element(deriv_l->get(i + 1, j + 1), s);
-//       }
-//     }
-
-//     for (size_t j = 0; j < 3; ++j) {
-//       for (size_t i = 0; i < 3; ++i) {
-//         get_element(deriv_l->get(i + 1, j + 1), s) = 0.;
-//         for (size_t k = 0; k < 3; ++k) {
-//           for (size_t m = 0; m < 3; ++m) {
-//             get_element(deriv_l->get(i + 1, j + 1), s) +=
-//                 get_element(jacobian.get(k, i), s) *
-//                 get_element(jacobian.get(m, j), s) *
-//                 get_element(temp_deriv_l[k], m);
-//           }
-//           get_element(deriv_l->get(i + 1, j + 1), s) +=
-//               get_element(kerr_schild_l.get(k), s) *
-//               get_element(deriv_jacobian.get(k, i, j), s);
-//         }
-//       }
-//     }
-//   }
-// }
-
 template <typename DataType, typename Frame>
 void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     const gsl::not_null<tnsr::ij<DataType, 4, Frame>*> deriv_l,
@@ -983,23 +837,12 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
                get_element(a_dot_x, s) * gsl::at(spin_a, i) / square(rboyer));
     }
 
-    std::cout << "This is H[0][s]: " << get_element(H[0], s) << "\n";
-    std::cout << "This is drden:"
-              << "\n"
-              << drden << "\n";
-    std::cout << "This is dr:"
-              << "\n"
-              << dr << "\n";
-
     for (int i = 0; i < 3; ++i) {
       ks_l_for_deriv_l.get(i) =
           den * (rboyer * get_element(x_kerr_schild.get(i), s) +
                  get_element(a_dot_x, s) * gsl::at(spin_a, i) / rboyer -
                  get_element(a_cross_x.get(i), s));
     }
-    // std::cout << "ks_l_for_deriv_l:"
-    //           << "\n"
-    //           << ks_l_for_deriv_l << "\n";
 
     for (size_t i = 0; i < 3; ++i) {
       for (size_t j = 0; j < 3; ++j) {
@@ -1032,9 +875,6 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
         temp_deriv_l.get(j, i) = get_element(deriv_l->get(j + 1, i + 1), s);
       }
     }
-    std::cout << "temp_deriv_l: "
-              << "\n"
-              << temp_deriv_l << "\n";
 
     for (size_t j = 0; j < 3; ++j) {
       for (size_t i = 0; i < 3; ++i) {
@@ -1052,9 +892,310 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
         }
       }
     }
-    std::cout << "This is ks_l_for_deriv_l: " << ks_l_for_deriv_l << "\n";
-    std::cout << "This is den: " << den << "\n";
   }
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<Scalar<DataType>*> lapse_squared,
+    const gsl::not_null<CachedBuffer*> cache,
+    internal_tags::lapse_squared<DataType> /*meta*/) const {
+  const auto& H = get(cache->get_var(*this, internal_tags::H<DataType>{}));
+  const auto& sph_kerr_schild_l_upper = cache->get_var(
+      *this, internal_tags::sph_kerr_schild_l_upper<DataType, Frame>{});
+  get(*lapse_squared) =
+      1.0 / (1.0 + 2.0 * square(sph_kerr_schild_l_upper.get(0)) * H);
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<Scalar<DataType>*> lapse,
+    const gsl::not_null<CachedBuffer*> cache,
+    gr::Tags::Lapse<DataType> /*meta*/) const {
+  const auto& lapse_squared =
+      get(cache->get_var(*this, internal_tags::lapse_squared<DataType>{}));
+  get(*lapse) = sqrt(lapse_squared);
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<Scalar<DataType>*> deriv_lapse_multiplier,
+    const gsl::not_null<CachedBuffer*> cache,
+    internal_tags::deriv_lapse_multiplier<DataType> /*meta*/) const {
+  const auto& lapse = get(cache->get_var(*this, gr::Tags::Lapse<DataType>{}));
+  const auto& lapse_squared =
+      get(cache->get_var(*this, internal_tags::lapse_squared<DataType>{}));
+  get(*deriv_lapse_multiplier) =
+      -square(null_vector_0_) * lapse * lapse_squared;
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<Scalar<DataType>*> shift_multiplier,
+    const gsl::not_null<CachedBuffer*> cache,
+    internal_tags::shift_multiplier<DataType> /*meta*/) const {
+  const auto& H = get(cache->get_var(*this, internal_tags::H<DataType>{}));
+  const auto& lapse_squared =
+      get(cache->get_var(*this, internal_tags::lapse_squared<DataType>{}));
+
+  get(*shift_multiplier) = -2.0 * null_vector_0_ * H * lapse_squared;
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<tnsr::I<DataType, 3, Frame>*> shift,
+    const gsl::not_null<CachedBuffer*> cache,
+    gr::Tags::Shift<3, Frame, DataType> /*meta*/) const {
+  const auto& sph_kerr_schild_l_upper = cache->get_var(
+      *this, internal_tags::sph_kerr_schild_l_upper<DataType, Frame>{});
+  const auto& shift_multiplier =
+      get(cache->get_var(*this, internal_tags::shift_multiplier<DataType>{}));
+
+  for (size_t i = 0; i < 3; ++i) {
+    shift->get(i) = shift_multiplier * sph_kerr_schild_l_upper.get(i + 1);
+  }
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<tnsr::iJ<DataType, 3, Frame>*> deriv_shift,
+    const gsl::not_null<CachedBuffer*> cache,
+    DerivShift<DataType, Frame> /*meta*/) const {
+  const auto& H = get(cache->get_var(*this, internal_tags::H<DataType>{}));
+  const auto& sph_kerr_schild_l_upper = cache->get_var(
+      *this, internal_tags::sph_kerr_schild_l_upper<DataType, Frame>{});
+  const auto& sph_kerr_schild_l_lower = cache->get_var(
+      *this, internal_tags::sph_kerr_schild_l_lower<DataType, Frame>{});
+  const auto& lapse_squared =
+      get(cache->get_var(*this, internal_tags::lapse_squared<DataType>{}));
+  const auto& deriv_H =
+      cache->get_var(*this, internal_tags::deriv_H<DataType, Frame>{});
+  const auto& deriv_l =
+      cache->get_var(*this, internal_tags::deriv_l<DataType, Frame>{});
+  const auto& inv_jacobian =
+      cache->get_var(*this, internal_tags::inv_jacobian<DataType, Frame>{});
+  const auto& deriv_inv_jacobian = cache->get_var(
+      *this, internal_tags::deriv_inv_jacobian<DataType, Frame>{});
+
+  // for (size_t m = 0; m < 3; ++m) {
+  //   for (size_t i = 0; i < 3; ++i) {
+  // deriv_shift->get(m, i) =
+  //     4.0 * cube(null_vector_0_) * H * sph_kerr_schild_l_upper.get(i + 1) *
+  //         square(lapse_squared) * deriv_H.get(m) -
+  //     2.0 * null_vector_0_ * lapse_squared *
+  //         (sph_kerr_schild_l_upper.get(i + 1) * deriv_H.get(m) +
+  //          H * deriv_l.get(m + 1, i + 1));
+
+  //   }
+  // }
+
+  for (int i = 0; i < 3; ++i) {
+    for (int k = 0; k < 3; ++k) {
+      deriv_shift->get(k, i) =
+          4.0 * H * sph_kerr_schild_l_upper.get(0) *
+              sph_kerr_schild_l_upper.get(i + 1) * square(lapse_squared) *
+              (square(sph_kerr_schild_l_upper.get(0)) * deriv_H.get(k + 1) +
+               2.0 * H * sph_kerr_schild_l_upper.get(0) *
+                   deriv_l.get(k + 1, 0)) -
+          2.0 * lapse_squared *
+              (sph_kerr_schild_l_upper.get(0) *
+                   sph_kerr_schild_l_upper.get(i + 1) * deriv_H.get(k + 1) +
+               H * sph_kerr_schild_l_upper.get(i + 1) * deriv_l.get(k + 1, 0));
+
+      for (int j = 0; j < 3; ++j) {
+        for (int m = 0; m < 3; ++m) {
+          deriv_shift->get(k, i) +=
+              -2.0 * lapse_squared * H * sph_kerr_schild_l_upper.get(0) *
+              (inv_jacobian.get(i, j) * inv_jacobian.get(m, j) *
+                   deriv_l.get(
+                       m + 1,
+                       k + 1) +  // think this is syntactically
+                                 // incorrect, but matches spec like this
+               inv_jacobian.get(i, j) * sph_kerr_schild_l_lower.get(m + 1) *
+                   deriv_inv_jacobian.get(k, m, j) +
+               inv_jacobian.get(m, j) * sph_kerr_schild_l_lower.get(m + 1) *
+                   deriv_inv_jacobian.get(k, i, j));
+        }
+      }
+    }
+  }
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<tnsr::ii<DataType, 3, Frame>*> spatial_metric,
+    const gsl::not_null<CachedBuffer*> cache,
+    gr::Tags::SpatialMetric<3, Frame, DataType> /*meta*/) const {
+  const auto& H = get(cache->get_var(*this, internal_tags::H<DataType>{}));
+  // const auto& sph_kerr_schild_l_upper = cache->get_var(
+  //     *this, internal_tags::sph_kerr_schild_l_upper<DataType, Frame>{});
+  const auto& sph_kerr_schild_l_lower = cache->get_var(
+      *this, internal_tags::sph_kerr_schild_l_lower<DataType, Frame>{});
+  const auto& jacobian =
+      cache->get_var(*this, internal_tags::jacobian<DataType, Frame>{});
+
+  std::fill(spatial_metric->begin(), spatial_metric->end(), 0.);
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = i; j < 3; ++j) {  // Symmetry
+      spatial_metric->get(i, j) += 2.0 * H *
+                                   sph_kerr_schild_l_lower.get(i + 1) *
+                                   sph_kerr_schild_l_lower.get(j + 1);
+    }
+  }
+
+  for (size_t k = 0; k < 3; ++k) {
+    for (size_t m = k; m < 3; ++m) {
+      for (size_t i = 0; i < 3; ++i) {
+        spatial_metric->get(k, m) += jacobian.get(i, k) * jacobian.get(i, m);
+      }
+    }
+  }
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<tnsr::ijj<DataType, 3, Frame>*> deriv_spatial_metric,
+    const gsl::not_null<CachedBuffer*> cache,
+    DerivSpatialMetric<DataType, Frame> /*meta*/) const {
+  // const auto& sph_kerr_schild_l_upper = cache->get_var(
+  //     *this, internal_tags::sph_kerr_schild_l_upper<DataType, Frame>{});
+  const auto& sph_kerr_schild_l_lower = cache->get_var(
+      *this, internal_tags::sph_kerr_schild_l_lower<DataType, Frame>{});
+  const auto& deriv_H =
+      cache->get_var(*this, internal_tags::deriv_H<DataType, Frame>{});
+  const auto& H = get(cache->get_var(*this, internal_tags::H<DataType>{}));
+  const auto& deriv_l =
+      cache->get_var(*this, internal_tags::deriv_l<DataType, Frame>{});
+  const auto& jacobian =
+      cache->get_var(*this, internal_tags::jacobian<DataType, Frame>{});
+  const auto& deriv_jacobian =
+      cache->get_var(*this, internal_tags::deriv_jacobian<DataType, Frame>{});
+
+  for (int k = 0; k < 3; ++k) {
+    for (int i = 0; i < 3; ++i) {
+      for (int j = i; j < 3; ++j) {  // Symmetry
+        deriv_spatial_metric->get(k, i, j) =
+            2.0 * sph_kerr_schild_l_lower.get(i + 1) *
+                sph_kerr_schild_l_lower.get(j + 1) * deriv_H.get(k + 1) +
+            2.0 * H *
+                (sph_kerr_schild_l_lower.get(i + 1) *
+                     deriv_l.get(j + 1, k + 1) +
+                 sph_kerr_schild_l_lower.get(j + 1) *
+                     deriv_l.get(i + 1, k + 1));
+        for (int m = 0; m < 3; ++m) {
+          deriv_spatial_metric->get(k, i, j) +=
+              deriv_jacobian.get(k, m, i) * jacobian.get(m, j) +
+              deriv_jacobian.get(k, m, j) * jacobian.get(m, i);
+        }
+      }
+    }
+  }
+}
+
+template <typename DataType, typename Frame>
+void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
+    const gsl::not_null<tnsr::ii<DataType, 3, Frame>*> dt_spatial_metric,
+    const gsl::not_null<CachedBuffer*> /*cache*/,
+    ::Tags::dt<gr::Tags::SpatialMetric<3, Frame, DataType>> /*meta*/) const {
+  std::fill(dt_spatial_metric->begin(), dt_spatial_metric->end(), 0.);
+}
+
+// template <typename DataType, typename Frame>
+// SphKerrSchild::IntermediateVars<DataType, Frame>::IntermediateVars(
+//     const SphKerrSchild& solution,
+//     const tnsr::I<DataType, 3, Frame>& x)
+//     : CachedBuffer(get_size(::get<0>(x)), IntermediateComputer<DataType,
+//     Frame>(
+//                                               solution, x, null_vector_0_))
+//                                               {}
+
+template <typename DataType, typename Frame>
+tnsr::i<DataType, 3, Frame>
+SphKerrSchild::IntermediateVars<DataType, Frame>::get_var(
+    const IntermediateComputer<DataType, Frame>& computer,
+    DerivLapse<DataType, Frame> /*meta*/) {
+  tnsr::i<DataType, 3, Frame> result{};
+  const auto& deriv_H =
+      get_var(computer, internal_tags::deriv_H<DataType, Frame>{});
+  const auto& deriv_lapse_multiplier =
+      get(get_var(computer, internal_tags::deriv_lapse_multiplier<DataType>{}));
+
+  for (size_t i = 0; i < 3; ++i) {
+    result.get(i) = deriv_lapse_multiplier * deriv_H.get(i + 1);
+  }
+  return result;
+}
+
+template <typename DataType, typename Frame>
+Scalar<DataType> SphKerrSchild::IntermediateVars<DataType, Frame>::get_var(
+    const IntermediateComputer<DataType, Frame>& computer,
+    ::Tags::dt<gr::Tags::Lapse<DataType>> /*meta*/) {
+  const auto& H = get(get_var(computer, internal_tags::H<DataType>{}));
+  return make_with_value<Scalar<DataType>>(H, 0.);
+}
+
+template <typename DataType, typename Frame>
+tnsr::I<DataType, 3, Frame>
+SphKerrSchild::IntermediateVars<DataType, Frame>::get_var(
+    const IntermediateComputer<DataType, Frame>& computer,
+    ::Tags::dt<gr::Tags::Shift<3, Frame, DataType>> /*meta*/) {
+  const auto& H = get(get_var(computer, internal_tags::H<DataType>()));
+  return make_with_value<tnsr::I<DataType, 3, Frame>>(H, 0.);
+}
+
+template <typename DataType, typename Frame>
+Scalar<DataType> SphKerrSchild::IntermediateVars<DataType, Frame>::get_var(
+    const IntermediateComputer<DataType, Frame>& computer,
+    gr::Tags::SqrtDetSpatialMetric<DataType> /*meta*/) {
+  return Scalar<DataType>(1.0 /
+                          get(get_var(computer, gr::Tags::Lapse<DataType>{})));
+}
+
+template <typename DataType, typename Frame>
+tnsr::II<DataType, 3, Frame>
+SphKerrSchild::IntermediateVars<DataType, Frame>::get_var(
+    const IntermediateComputer<DataType, Frame>& computer,
+    gr::Tags::InverseSpatialMetric<3, Frame, DataType> /*meta*/) {
+  const auto& H = get(get_var(computer, internal_tags::H<DataType>{}));
+  const auto& lapse_squared =
+      get(get_var(computer, internal_tags::lapse_squared<DataType>{}));
+  const auto& sph_kerr_schild_l_upper = get_var(
+      computer, internal_tags::sph_kerr_schild_l_upper<DataType, Frame>{});
+  const auto& inv_jacobian =
+      get_var(computer, internal_tags::inv_jacobian<DataType, Frame>{});
+
+  auto result = make_with_value<tnsr::II<DataType, 3, Frame>>(H, 0.);
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = i; j < 3; ++j) {  // Symmetry
+      result.get(i, j) -= 2.0 * H * lapse_squared *
+                          sph_kerr_schild_l_upper.get(i + 1) *
+                          sph_kerr_schild_l_upper.get(j + 1);
+    }
+  }
+
+  for (size_t k = 0; k < 3; ++k) {
+    for (size_t m = k; m < 3; ++m) {
+      for (size_t i = 0; i < 3; ++i) {
+        result.get(k, m) += inv_jacobian.get(k, i) * inv_jacobian.get(m, i);
+      }
+    }
+  }
+  return result;
+}
+
+template <typename DataType, typename Frame>
+tnsr::ii<DataType, 3, Frame>
+SphKerrSchild::IntermediateVars<DataType, Frame>::get_var(
+    const IntermediateComputer<DataType, Frame>& computer,
+    gr::Tags::ExtrinsicCurvature<3, Frame, DataType> /*meta*/) {
+  return gr::extrinsic_curvature(
+      get_var(computer, gr::Tags::Lapse<DataType>{}),
+      get_var(computer, gr::Tags::Shift<3, Frame, DataType>{}),
+      get_var(computer, DerivShift<DataType, Frame>{}),
+      get_var(computer, gr::Tags::SpatialMetric<3, Frame, DataType>{}),
+      get_var(computer,
+              ::Tags::dt<gr::Tags::SpatialMetric<3, Frame, DataType>>{}),
+      get_var(computer, DerivSpatialMetric<DataType, Frame>{}));
 }
 
 #define DTYPE(data) BOOST_PP_TUPLE_ELEM(0, data)

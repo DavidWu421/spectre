@@ -93,8 +93,8 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
 
   const size_t used_for_sizet = used_for_size.size();
   const double mass = 0.5;
-  const std::array<double, 3> spin{{0.1, -0.3, 0.2}};
-  const std::array<double, 3> center{{0.0, 0.0, 0.0}};
+  const std::array<double, 3> spin{{-0.1, 0.3, 0.2}};
+  const std::array<double, 3> center{{0.5, 0.3, -2.0}};
 
   // non perturbed spatial coordinates
   const auto x = spatial_coords<Frame::Inertial>(used_for_size);
@@ -115,9 +115,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
                gr::Solutions::SphKerrSchild::internal_tags::x_sph_minus_center<
                    DataVector, Frame::Inertial>{});
 
-  std::cout << "x_sph_minus_center: "
-            << "\n"
-            << x_sph_minus_center << "\n";
+  //   std::cout << "x_sph_minus_center: "
+  //             << "\n"
+  //             << x_sph_minus_center << "\n";
 
   // r_squared test - non perturbed
   Scalar<DataVector> r_squared(3_st, 0.);
@@ -125,27 +125,27 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       make_not_null(&r_squared), make_not_null(&cache),
       gr::Solutions::SphKerrSchild::internal_tags::r_squared<DataVector>{});
 
-  std::cout << "This is r_squared: "
-            << "\n"
-            << r_squared << "\n";
+  //   std::cout << "This is r_squared: "
+  //             << "\n"
+  //             << r_squared << "\n";
 
   // r test - non perturbed
   Scalar<DataVector> r(3_st, 0.);
   sks_computer(make_not_null(&r), make_not_null(&cache),
                gr::Solutions::SphKerrSchild::internal_tags::r<DataVector>{});
 
-  std::cout << "This is r: "
-            << "\n"
-            << r << "\n";
+  //   std::cout << "This is r: "
+  //             << "\n"
+  //             << r << "\n";
 
   // rho test - non perturbed
   Scalar<DataVector> rho(3_st, 0.);
   sks_computer(make_not_null(&rho), make_not_null(&cache),
                gr::Solutions::SphKerrSchild::internal_tags::rho<DataVector>{});
 
-  std::cout << "This is rho: "
-            << "\n"
-            << rho << "\n";
+  //   std::cout << "This is rho: "
+  //             << "\n"
+  //             << rho << "\n";
 
   // matrix_F test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_F{1_st, 0.};
@@ -154,9 +154,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::matrix_F<DataVector,
                                                             Frame::Inertial>{});
 
-  std::cout << "This is matrix F: "
-            << "\n"
-            << matrix_F << "\n";
+  //   std::cout << "This is matrix F: "
+  //             << "\n"
+  //             << matrix_F << "\n";
 
   // matrix_P test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_P{1_st, 0.};
@@ -164,9 +164,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       make_not_null(&matrix_P), make_not_null(&cache),
       gr::Solutions::SphKerrSchild::internal_tags::matrix_P<DataVector,
                                                             Frame::Inertial>{});
-  std::cout << "This is matrix P: "
-            << "\n"
-            << matrix_P << "\n";
+  //   std::cout << "This is matrix P: "
+  //             << "\n"
+  //             << matrix_P << "\n";
 
   // jacobian test - non perturbed
   tnsr::Ij<DataVector, 3, Frame::Inertial> jacobian{1_st, 0.};
@@ -175,8 +175,8 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::jacobian<DataVector,
                                                             Frame::Inertial>{});
 
-  std::cout << "This is the jacobian: " << std::setprecision(16) << "\n"
-            << jacobian << std::endl;
+  //   std::cout << "This is the jacobian: " << std::setprecision(16) << "\n"
+  //             << jacobian << std::endl;
 
   // matrix_D test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_D{1_st, 0.};
@@ -185,9 +185,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::matrix_D<DataVector,
                                                             Frame::Inertial>{});
 
-  std::cout << "This is matrix D: "
-            << "\n"
-            << matrix_D << "\n";
+  //   std::cout << "This is matrix D: "
+  //             << "\n"
+  //             << matrix_D << "\n";
 
   // matrix_C test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_C{1_st, 0.};
@@ -196,9 +196,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::matrix_C<DataVector,
                                                             Frame::Inertial>{});
 
-  std::cout << "This is matrix C: "
-            << "\n"
-            << matrix_C << "\n";
+  //   std::cout << "This is matrix C: "
+  //             << "\n"
+  //             << matrix_C << "\n";
 
   // deriv_jacobian test
   tnsr::iJk<DataVector, 3, Frame::Inertial> deriv_jacobian{1_st, 0.};
@@ -206,9 +206,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
                gr::Solutions::SphKerrSchild::internal_tags::deriv_jacobian<
                    DataVector, Frame::Inertial>{});
 
-  std::cout << "This is the deriv_jacobian: "
-            << "\n"
-            << deriv_jacobian << std::endl;
+  //   std::cout << "This is the deriv_jacobian: "
+  //             << "\n"
+  //             << deriv_jacobian << std::endl;
 
   // matrix_Q test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_Q{1_st, 0.};
@@ -229,9 +229,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       make_not_null(&a_dot_x), make_not_null(&cache),
       gr::Solutions::SphKerrSchild::internal_tags::a_dot_x<DataVector>{});
 
-  std::cout << "This is a_dot_x: "
-            << "\n"
-            << a_dot_x << std::endl;
+  //   std::cout << "This is a_dot_x: "
+  //             << "\n"
+  //             << a_dot_x << std::endl;
 
   // matrix_G2 test
   tnsr::Ij<DataVector, 3, Frame::Inertial> matrix_G2{1_st, 0.};
@@ -239,9 +239,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
                gr::Solutions::SphKerrSchild::internal_tags::matrix_G2<
                    DataVector, Frame::Inertial>{});
 
-  std::cout << "This is matrix G2: "
-            << "\n"
-            << matrix_G2 << "\n";
+  //   std::cout << "This is matrix G2: "
+  //             << "\n"
+  //             << matrix_G2 << "\n";
 
   // G1_dot_x test
   tnsr::I<DataVector, 3, Frame::Inertial> G1_dot_x{3_st, 0.};
@@ -250,9 +250,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::G1_dot_x<DataVector,
                                                             Frame::Inertial>{});
 
-  std::cout << "This is matrix G2: "
-            << "\n"
-            << matrix_G2 << "\n";
+  //   std::cout << "This is matrix G2: "
+  //             << "\n"
+  //             << matrix_G2 << "\n";
 
   // G2_dot_x test
   tnsr::i<DataVector, 3, Frame::Inertial> G2_dot_x{3_st, 0.};
@@ -261,9 +261,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::G2_dot_x<DataVector,
                                                             Frame::Inertial>{});
 
-  std::cout << "This is G2 dot x: "
-            << "\n"
-            << G2_dot_x << "\n";
+  //   std::cout << "This is G2 dot x: "
+  //             << "\n"
+  //             << G2_dot_x << "\n";
 
   // inv_jacobian test - non perturbed
   tnsr::Ij<DataVector, 3, Frame::Inertial> inv_jacobian{1_st, 0.};
@@ -283,9 +283,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
                gr::Solutions::SphKerrSchild::internal_tags::matrix_E2<
                    DataVector, Frame::Inertial>{});
 
-  std::cout << "This is matrix E2: "
-            << "\n"
-            << matrix_E2 << "\n";
+  //   std::cout << "This is matrix E2: "
+  //             << "\n"
+  //             << matrix_E2 << "\n";
 
   //   deriv_inv_jacobian test - non perturbed
   tnsr::iJk<DataVector, 3, Frame::Inertial> deriv_inv_jacobian{1_st, 0.};
@@ -293,18 +293,18 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
                gr::Solutions::SphKerrSchild::internal_tags::deriv_inv_jacobian<
                    DataVector, Frame::Inertial>{});
 
-  std::cout << "This is deriv inv jacobian: "
-            << "\n"
-            << deriv_inv_jacobian << "\n";
+  //   std::cout << "This is deriv inv jacobian: "
+  //             << "\n"
+  //             << deriv_inv_jacobian << "\n";
 
   //  H test - non perturbed
   Scalar<DataVector> H{0.};
   sks_computer(make_not_null(&H), make_not_null(&cache),
                gr::Solutions::SphKerrSchild::internal_tags::H<DataVector>{});
 
-  std::cout << "This is scalar H: "
-            << "\n"
-            << H << "\n";
+  //   std::cout << "This is scalar H: "
+  //             << "\n"
+  //             << H << "\n";
 
   // x_kerr_schild test - non perturbed
   auto x_kerr_schild = spatial_coords<Frame::Inertial>(used_for_size);
@@ -312,9 +312,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
                gr::Solutions::SphKerrSchild::internal_tags::x_kerr_schild<
                    DataVector, Frame::Inertial>{});
 
-  std::cout << "This is x_kerr_schild: "
-            << "\n"
-            << x_kerr_schild << "\n";
+  //   std::cout << "This is x_kerr_schild: "
+  //             << "\n"
+  //             << x_kerr_schild << "\n";
 
   // a_cross_x test - non perturbed
   auto a_cross_x = spatial_coords<Frame::Inertial>(used_for_size);
@@ -322,9 +322,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
                gr::Solutions::SphKerrSchild::internal_tags::a_cross_x<
                    DataVector, Frame::Inertial>{});
 
-  std::cout << "This is a_cross_x: "
-            << "\n"
-            << a_cross_x << "\n";
+  //   std::cout << "This is a_cross_x: "
+  //             << "\n"
+  //             << a_cross_x << "\n";
 
   // kerr_schild_l test - non perturbed
   auto kerr_schild_l = spatial_coords<Frame::Inertial>(used_for_size);
@@ -332,9 +332,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
                gr::Solutions::SphKerrSchild::internal_tags::kerr_schild_l<
                    DataVector, Frame::Inertial>{});
 
-  std::cout << "This is kerr_schild_l: "
-            << "\n"
-            << kerr_schild_l << "\n";
+  //   std::cout << "This is kerr_schild_l: "
+  //             << "\n"
+  //             << kerr_schild_l << "\n";
 
   // sph_kerr_schild)l_lower test - non perturbed
   tnsr::i<DataVector, 4, Frame::Inertial> sph_kerr_schild_l_lower{
@@ -344,9 +344,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::sph_kerr_schild_l_lower<
           DataVector, Frame::Inertial>{});
 
-  std::cout << "This is sph_kerr_schild_l_lower: "
-            << "\n"
-            << sph_kerr_schild_l_lower << "\n";
+  //   std::cout << "This is sph_kerr_schild_l_lower: "
+  //             << "\n"
+  //             << sph_kerr_schild_l_lower << "\n";
 
   // sph_kerr_schild_l_upper test - non perturbed
   tnsr::I<DataVector, 4, Frame::Inertial> sph_kerr_schild_l_upper{
@@ -356,9 +356,9 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::sph_kerr_schild_l_upper<
           DataVector, Frame::Inertial>{});
 
-  std::cout << "This is sph_kerr_schild_l_upper: "
-            << "\n"
-            << sph_kerr_schild_l_upper << "\n";
+  //   std::cout << "This is sph_kerr_schild_l_upper: "
+  //             << "\n"
+  //             << sph_kerr_schild_l_upper << "\n";
 
   // deriv_H test - non perturbed
   tnsr::I<DataVector, 4, Frame::Inertial> deriv_H{used_for_size};
@@ -369,7 +369,7 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
 
   std::cout << "This is deriv_H: "
             << "\n"
-            << deriv_H << "\n";
+            << std::setprecision(10) << deriv_H << "\n";
 
   //   deriv_l - non perturbed
   tnsr::ij<DataVector, 4, Frame::Inertial> deriv_l{used_for_size};
@@ -378,9 +378,108 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
       gr::Solutions::SphKerrSchild::internal_tags::deriv_l<DataVector,
                                                            Frame::Inertial>{});
 
-  std::cout << "This is deriv_l: "
-            << "\n"
-            << deriv_l << "\n";
+  //   std::cout << "This is deriv_l: "
+  //             << "\n"
+  //             << deriv_l << "\n";
+
+  Scalar<DataVector> lapse_squared{used_for_size};
+  sks_computer(
+      make_not_null(&lapse_squared), make_not_null(&cache),
+      gr::Solutions::SphKerrSchild::internal_tags::lapse_squared<DataVector>{});
+
+  //   std::cout << "This is lapse_squared: \n" << lapse_squared << "\n";
+
+  Scalar<DataVector> lapse{used_for_size};
+  sks_computer(make_not_null(&lapse), make_not_null(&cache),
+               gr::Tags::Lapse<DataVector>{});
+
+  // std::cout << "This is lapse: \n" << std::setprecision(10) << lapse << "\n";
+
+  tnsr::I<DataVector, 3, Frame::Inertial> shift{used_for_size};
+  sks_computer(make_not_null(&shift), make_not_null(&cache),
+               gr::Tags::Shift<3, Frame::Inertial, DataVector>{});
+
+  // std::cout << "This is shift: "
+  //           << "\n"
+  //           << std::setprecision(10) << shift << "\n";
+
+  tnsr::iJ<DataVector, 3, Frame::Inertial> deriv_shift{used_for_size};
+  sks_computer(
+      make_not_null(&deriv_shift), make_not_null(&cache),
+      gr::Solutions::SphKerrSchild::DerivShift<DataVector, Frame::Inertial>{});
+
+  // std::cout << "This is deriv_shift: "
+  //           << "\n"
+  //           << std::setprecision(12) << deriv_shift << "\n";
+
+  // tnsr::II<DataVector, 3, Frame::Inertial> inv_spatial_metric{used_for_size};
+  // auto inv_spatial_metric = SphKerrSchild::IntermediateVars<DataVector,
+  // Frame::Inertial>::get_var(
+
+  Scalar<DataVector> deriv_lapse_multiplier{used_for_size};
+  sks_computer(
+      make_not_null(&deriv_lapse_multiplier), make_not_null(&cache),
+      gr::Solutions::SphKerrSchild::internal_tags::deriv_lapse_multiplier<
+          DataVector>{});
+
+  // std::cout << "This is deriv_lapse_multiplier: \n" <<
+  // deriv_lapse_multiplier << "\n";
+
+  tnsr::ii<DataVector, 3, Frame::Inertial> spatial_metric{used_for_size};
+  sks_computer(make_not_null(&spatial_metric), make_not_null(&cache),
+               gr::Tags::SpatialMetric<3, Frame::Inertial, DataVector>{});
+
+  // std::cout << "This is spatial_metric: "
+  //           << "\n"
+  //           << std::setprecision(12) << spatial_metric << "\n";
+
+  tnsr::ijj<DataVector, 3, Frame::Inertial> deriv_spatial_metric{used_for_size};
+  sks_computer(
+      make_not_null(&deriv_spatial_metric), make_not_null(&cache),
+      gr::Solutions::SphKerrSchild::DerivSpatialMetric<DataVector,
+                                                       Frame::Inertial>{});
+
+  // std::cout << "This is deriv_spatial_metric: "
+  //           << "\n"
+  //           << std::setprecision(12) << deriv_spatial_metric << "\n";
+
+  tnsr::ii<DataVector, 3, Frame::Inertial> dt_spatial_metric{used_for_size};
+  sks_computer(
+      make_not_null(&dt_spatial_metric), make_not_null(&cache),
+      ::Tags::dt<gr::Tags::SpatialMetric<3, Frame::Inertial, DataVector>>{});
+
+  //   std::cout << "This is dt_spatial_metric: "
+  //             << "\n"
+  //             << dt_spatial_metric << "\n";
+
+  auto inv_spatial_metric =
+      make_with_value<tnsr::II<DataVector, 3, Frame::Inertial>>(H, 0.);
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t j = i; j < 3; ++j) {  // Symmetry
+      inv_spatial_metric.get(i, j) -= 2.0 * get_element(H, 0) *
+                                      get_element(lapse_squared, 0) *
+                                      sph_kerr_schild_l_upper.get(i + 1) *
+                                      sph_kerr_schild_l_upper.get(j + 1);
+    }
+  }
+
+  for (size_t k = 0; k < 3; ++k) {
+    for (size_t m = k; m < 3; ++m) {
+      for (size_t i = 0; i < 3; ++i) {
+        inv_spatial_metric.get(k, m) +=
+            inv_jacobian.get(k, i) * inv_jacobian.get(m, i);
+      }
+    }
+  }
+  // std::cout << "This is inv_spatial_metric" << inv_spatial_metric << "\n";
+
+  auto deriv_lapse =
+      make_with_value<tnsr::i<DataVector, 3, Frame::Inertial>>(H, 0.);
+  for (size_t i = 0; i < 3; ++i) {
+    deriv_lapse.get(i) = deriv_lapse_multiplier[0] * deriv_H[i + 1];
+  }
+  std::cout << "This is deriv_lapse" << std::setprecision(10) << deriv_lapse
+            << "\n";
 
   //   FINITE DIFFERENCE TESTS
 
@@ -424,7 +523,7 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   CHECK_ITERABLE_CUSTOM_APPROX(finite_diff_jacobian, input_coords_jacobian,
                                finite_difference_approx);
 
-  std::cout << "finite diff jacobian: " << finite_diff_jacobian << "\n";
+  //   std::cout << "finite diff jacobian: " << finite_diff_jacobian << "\n";
 
   // DERIV JACOBIAN TEST
 
@@ -541,12 +640,12 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   std::cout << "This is finite diff deriv_l:"
             << "\n"
             << finite_diff_deriv_l << "\n";
-  //   std::cout << "This is input_coords_l:"
-  //             << "\n"
-  //             << input_coords_l << "\n";
+  //   //   std::cout << "This is input_coords_l:"
+  //   //             << "\n"
+  //   //             << input_coords_l << "\n";
   std::cout << "This is deriv_l: "
             << "\n"
-            << deriv_l << "\n";
+            << std::setprecision(12) << deriv_l << "\n";
 
   // const std::array<double, 3> lower_bound{{0.82, 1.24, 1.32}};
   // const size_t grid_size = 8;
@@ -591,7 +690,7 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
           "General_Finite_Difference", "check_finite_difference_rank1",
           input_vector, pert_matrix, perturbation_vector);
 
-  std::cout << "This is the test func jacobian: " << test_jacobian << "\n";
+  //   std::cout << "This is the test func jacobian: " << test_jacobian << "\n";
 
   tnsr::Ij<DataVector, 3, Frame::Inertial> real_jac{1_st, 0.};
   real_jac.get(0, 0) = 1;
@@ -604,7 +703,7 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.SphKerrSchild",
   real_jac.get(1, 2) = 1;
   real_jac.get(2, 2) = 15 * pow(Z, 2);
 
-  std::cout << "This is the real func jacobian: " << real_jac << "\n";
+  //   std::cout << "This is the real func jacobian: " << real_jac << "\n";
 
   // // Tests f(X,Y,Z) = (X^4+Y^5+Z^6, X^7+Y^8+Z^9, X^1+Y^2+Z^3) with
   // X=1.1,Y=2.2, Z=3.3

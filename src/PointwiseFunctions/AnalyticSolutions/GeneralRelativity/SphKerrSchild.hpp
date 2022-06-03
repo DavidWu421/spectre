@@ -156,7 +156,13 @@ class SphKerrSchild : public AnalyticSolution<3_st>,
     template <typename DataType, typename Frame = ::Frame::Inertial>
     using deriv_H = ::Tags::TempI<28, 4, Frame, DataType>;
     template <typename DataType, typename Frame = ::Frame::Inertial>
-    using deriv_l = ::Tags::Tempij<28, 4, Frame, DataType>;
+    using deriv_l = ::Tags::Tempij<29, 4, Frame, DataType>;
+    template <typename DataType>
+    using lapse_squared = ::Tags::TempScalar<30, DataType>;
+    template <typename DataType>
+    using deriv_lapse_multiplier = ::Tags::TempScalar<31, DataType>;
+    template <typename DataType>
+    using shift_multiplier = ::Tags::TempScalar<32, DataType>;
   };
 
   template <typename DataType, typename Frame = ::Frame::Inertial>
@@ -185,7 +191,14 @@ class SphKerrSchild : public AnalyticSolution<3_st>,
       internal_tags::sph_kerr_schild_l_lower<DataType, Frame>,
       internal_tags::sph_kerr_schild_l_upper<DataType, Frame>,
       internal_tags::deriv_H<DataType, Frame>,
-      internal_tags::deriv_l<DataType, Frame>>;
+      internal_tags::deriv_l<DataType, Frame>,
+      internal_tags::lapse_squared<DataType>, gr::Tags::Lapse<DataType>,
+      internal_tags::deriv_lapse_multiplier<DataType>,
+      internal_tags::shift_multiplier<DataType>,
+      gr::Tags::Shift<3, Frame, DataType>, DerivShift<DataType, Frame>,
+      gr::Tags::SpatialMetric<3, Frame, DataType>,
+      DerivSpatialMetric<DataType, Frame>,
+      ::Tags::dt<gr::Tags::SpatialMetric<3, Frame, DataType>>>;
 
   template <typename DataType, typename Frame = ::Frame::Inertial>
   class IntermediateComputer {
@@ -318,6 +331,45 @@ class SphKerrSchild : public AnalyticSolution<3_st>,
     void operator()(gsl::not_null<tnsr::ij<DataType, 4, Frame>*> deriv_l,
                     gsl::not_null<CachedBuffer*> cache,
                     internal_tags::deriv_l<DataType, Frame> /*meta*/) const;
+
+    void operator()(gsl::not_null<Scalar<DataType>*> lapse_squared,
+                    gsl::not_null<CachedBuffer*> cache,
+                    internal_tags::lapse_squared<DataType> /*meta*/) const;
+
+    void operator()(gsl::not_null<Scalar<DataType>*> lapse,
+                    gsl::not_null<CachedBuffer*> cache,
+                    gr::Tags::Lapse<DataType> /*meta*/) const;
+
+    void operator()(
+        gsl::not_null<Scalar<DataType>*> deriv_lapse_multiplier,
+        gsl::not_null<CachedBuffer*> cache,
+        internal_tags::deriv_lapse_multiplier<DataType> /*meta*/) const;
+
+    void operator()(gsl::not_null<Scalar<DataType>*> shift_multiplier,
+                    gsl::not_null<CachedBuffer*> cache,
+                    internal_tags::shift_multiplier<DataType> /*meta*/) const;
+
+    void operator()(gsl::not_null<tnsr::I<DataType, 3, Frame>*> shift,
+                    gsl::not_null<CachedBuffer*> cache,
+                    gr::Tags::Shift<3, Frame, DataType> /*meta*/) const;
+
+    void operator()(gsl::not_null<tnsr::iJ<DataType, 3, Frame>*> deriv_shift,
+                    gsl::not_null<CachedBuffer*> cache,
+                    DerivShift<DataType, Frame> /*meta*/) const;
+
+    void operator()(gsl::not_null<tnsr::ii<DataType, 3, Frame>*> spatial_metric,
+                    gsl::not_null<CachedBuffer*> cache,
+                    gr::Tags::SpatialMetric<3, Frame, DataType> /*meta*/) const;
+
+    void operator()(
+        gsl::not_null<tnsr::ijj<DataType, 3, Frame>*> deriv_spatial_metric,
+        gsl::not_null<CachedBuffer*> cache,
+        DerivSpatialMetric<DataType, Frame> /*meta*/) const;
+
+    void operator()(
+        gsl::not_null<tnsr::ii<DataType, 3, Frame>*> dt_spatial_metric,
+        gsl::not_null<CachedBuffer*> cache,
+        ::Tags::dt<gr::Tags::SpatialMetric<3, Frame, DataType>> /*meta*/) const;
 
    private:
     const SphKerrSchild& solution_;
