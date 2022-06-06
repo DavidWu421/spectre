@@ -66,18 +66,18 @@ template <typename Frame, typename DataType>
 tnsr::I<DataType, 3, Frame> spatial_coords(const DataType& used_for_size) {
   auto x = make_with_value<tnsr::I<DataType, 3, Frame>>(used_for_size, 0.0);
   const double dx_i = .0001;
-  get<0>(x)[0] = 2.018668678767716;
-  get<0>(x)[1] = 2.018668678767716 + dx_i;
-  get<0>(x)[2] = 2.018668678767716;
-  get<0>(x)[3] = 2.018668678767716;
-  get<1>(x)[0] = -0.003733735753543165;
-  get<1>(x)[1] = -0.003733735753543165;
-  get<1>(x)[2] = -0.003733735753543165 + dx_i;
-  get<1>(x)[3] = -0.003733735753543165;
-  get<2>(x)[0] = -2.014934943014173;
-  get<2>(x)[1] = -2.014934943014173;
-  get<2>(x)[2] = -2.014934943014173;
-  get<2>(x)[3] = -2.014934943014173 + dx_i;
+  get<0>(x)[0] = 4;
+  get<0>(x)[1] = 4 + dx_i;
+  get<0>(x)[2] = 4;
+  get<0>(x)[3] = 4;
+  get<1>(x)[0] = 3;
+  get<1>(x)[1] = 3;
+  get<1>(x)[2] = 3 + dx_i;
+  get<1>(x)[3] = 3;
+  get<2>(x)[0] = 2;
+  get<2>(x)[1] = 2;
+  get<2>(x)[2] = 2;
+  get<2>(x)[3] = 2 + dx_i;
   return x;
 }
 
@@ -92,7 +92,7 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.KerrSchild",
   const size_t used_for_sizet = used_for_size.size();
   const double mass = 0.5;
   const std::array<double, 3> spin{{0.1, -0.3, 0.2}};
-  const std::array<double, 3> center{{0., 0., 0.}};
+  const std::array<double, 3> center{{0.0, 0.0, 0.0}};
 
   // non perturbed spatial coordinates
   const auto x = spatial_coords<Frame::Inertial>(used_for_size);
@@ -161,4 +161,21 @@ SPECTRE_TEST_CASE("Unit.PointwiseFunctions.AnalyticSolutions.Gr.KerrSchild",
   std::cout << "This is finite diff_null_form: \n"
             << finite_diff_deriv_l << "\n";
   std::cout << "This is deriv_null_form: \n" << deriv_null_form << "\n";
+
+
+  tnsr::i<DataVector, 3, Frame::Inertial> null_form{used_for_size};
+  ks_computer(make_not_null(&null_form), make_not_null(&cache),
+               gr::Solutions::KerrSchild::internal_tags::null_form<
+                   DataVector, Frame::Inertial>{});
+
+    std::cout << "This is null_form: "
+              << "\n"
+              << std::setprecision(12) << null_form << "\n";
+
+  Scalar<DataVector> lapse_squared{used_for_size};
+  ks_computer(make_not_null(&lapse_squared), make_not_null(&cache),
+              gr::Solutions::KerrSchild::internal_tags::lapse_squared<
+                  DataVector>{});
+
+  std::cout << "This is lapse_squared: \n" << lapse_squared << "\n";
 }
