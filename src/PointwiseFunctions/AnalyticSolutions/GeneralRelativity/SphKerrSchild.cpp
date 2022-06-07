@@ -198,9 +198,9 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   // jacobian Calculation
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 3; ++j) {
-      jacobian->get(i, j) = matrix_P.get(i, j);
+      jacobian->get(j, i) = matrix_P.get(i, j);
       for (size_t k = 0; k < 3; ++k) {
-        jacobian->get(i, j) += matrix_F.get(i, k) * x_sph_minus_center.get(k) *
+        jacobian->get(j, i) += matrix_F.get(i, k) * x_sph_minus_center.get(k) *
                                x_sph_minus_center.get(j);
       }
     }
@@ -276,17 +276,17 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   for (size_t k = 0; k < 3; ++k) {
     for (size_t i = 0; i < 3; ++i) {
       for (size_t j = 0; j < 3; ++j) {
-        deriv_jacobian->get(k, i, j) =
+        deriv_jacobian->get(k, j, i) =
             matrix_F.get(i, j) * x_sph_minus_center.get(k) +
             matrix_F.get(i, k) * x_sph_minus_center.get(j);
 
         for (size_t m = 0; m < 3; ++m) {
           // Kronecker delta
           if (j == k) {
-            deriv_jacobian->get(k, i, j) +=
+            deriv_jacobian->get(k, j, i) +=
                 matrix_F.get(i, m) * x_sph_minus_center.get(m);
           }
-          deriv_jacobian->get(k, i, j) +=
+          deriv_jacobian->get(k, j, i) +=
               matrix_C.get(i, m) * x_sph_minus_center.get(k) *
               x_sph_minus_center.get(m) * x_sph_minus_center.get(j) / r_squared;
         }
@@ -468,7 +468,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   // inv_jacobian Calculation
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 3; ++j) {
-      inv_jacobian->get(i, j) =
+      inv_jacobian->get(j, i) =
           matrix_Q.get(i, j) + G1_dot_x.get(i) * G2_dot_x.get(j);
     }
   }
@@ -572,7 +572,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   for (size_t k = 0; k < 3; ++k) {
     for (size_t i = 0; i < 3; ++i) {
       for (size_t j = 0; j < 3; ++j) {
-        deriv_inv_jacobian->get(k, i, j) =
+        deriv_inv_jacobian->get(k, j, i) =
             matrix_D.get(i, j) * x_sph_minus_center.get(k) +
             matrix_G1.get(i, k) * G2_dot_x.get(j) +
             matrix_G2.get(k, j) * G1_dot_x.get(i) -
@@ -580,7 +580,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
                 G1_dot_x.get(i) * G2_dot_x.get(j);
 
         for (size_t m = 0; m < 3; ++m) {
-          deriv_inv_jacobian->get(k, i, j) +=
+          deriv_inv_jacobian->get(k, j, i) +=
               matrix_E1.get(i, m) * x_sph_minus_center.get(m) *
                   G2_dot_x.get(j) * x_sph_minus_center.get(k) / r +
               G1_dot_x.get(i) * x_sph_minus_center.get(k) *
@@ -590,6 +590,8 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
     }
   }
 }
+
+// HERE'S WHERE I STOPPED FLIPPING INDICES AT END OF 6/6
 
 template <typename DataType, typename Frame>
 void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
@@ -702,7 +704,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
       for (size_t i = 0; i < 3; ++i) {
         get_element(sph_kerr_schild_l_lower->get(j + 1), s) +=
-            get_element(jacobian.get(i, j), s) *
+            get_element(jacobian.get(j, i), s) *
             get_element(kerr_schild_l.get(i), s);
       }
     }
@@ -786,9 +788,9 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
     for (size_t j = 0; j < 3; ++j) {
       get_element(deriv_H->get(j + 1), s) =
-          get_element(jacobian.get(0, j), s) * deriv_H_x +
-          get_element(jacobian.get(1, j), s) * deriv_H_y +
-          get_element(jacobian.get(2, j), s) * deriv_H_z;
+          get_element(jacobian.get(j, 0), s) * deriv_H_x +
+          get_element(jacobian.get(j, 1), s) * deriv_H_y +
+          get_element(jacobian.get(j, 2), s) * deriv_H_z;
     }  // deriv_H in Spherical KS
   }
 }
@@ -882,13 +884,13 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
         for (size_t k = 0; k < 3; ++k) {
           for (size_t m = 0; m < 3; ++m) {
             get_element(deriv_l->get(j + 1, i + 1), s) +=
-                get_element(jacobian.get(k, i), s) *
-                get_element(jacobian.get(m, j), s) *
-                get_element(temp_deriv_l.get(k, m), s);
+                get_element(jacobian.get(i, k), s) *
+                get_element(jacobian.get(j, m), s) *
+                get_element(temp_deriv_l.get(m, k), s);
           }
           get_element(deriv_l->get(j + 1, i + 1), s) +=
               ks_l_for_deriv_l.get(k) *
-              get_element(deriv_jacobian.get(j, k, i), s);
+              get_element(deriv_jacobian.get(j, i, k), s);
         }
       }
     }
