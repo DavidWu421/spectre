@@ -198,9 +198,9 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   // jacobian Calculation
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 3; ++j) {
-      jacobian->get(i, j) = matrix_P.get(i, j);
+      jacobian->get(j, i) = matrix_P.get(i, j);
       for (size_t k = 0; k < 3; ++k) {
-        jacobian->get(i, j) += matrix_F.get(i, k) * x_sph_minus_center.get(k) *
+        jacobian->get(j, i) += matrix_F.get(i, k) * x_sph_minus_center.get(k) *
                                x_sph_minus_center.get(j);
       }
     }
@@ -293,6 +293,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
       }
     }
   }
+  // SECOND AND THIRD INDEX MAYBE FLIPPED?
 }
 
 template <typename DataType, typename Frame>
@@ -468,7 +469,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
   // inv_jacobian Calculation
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 3; ++j) {
-      inv_jacobian->get(i, j) =
+      inv_jacobian->get(j, i) =
           matrix_Q.get(i, j) + G1_dot_x.get(i) * G2_dot_x.get(j);
     }
   }
@@ -731,7 +732,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
 
       for (size_t i = 0; i < 3; ++i) {
         get_element(sph_kerr_schild_l_upper->get(j + 1), s) +=
-            get_element(inv_jacobian.get(j, i), s) *
+            get_element(inv_jacobian.get(i, j), s) *
             get_element(kerr_schild_l.get(i), s);
       }
     }
@@ -884,7 +885,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
             get_element(deriv_l->get(j + 1, i + 1), s) +=
                 get_element(jacobian.get(k, i), s) *
                 get_element(jacobian.get(m, j), s) *
-                get_element(temp_deriv_l.get(k, m), s);
+                get_element(temp_deriv_l.get(m, k), s);
           }
           get_element(deriv_l->get(j + 1, i + 1), s) +=
               ks_l_for_deriv_l.get(k) *
@@ -1007,10 +1008,7 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
           deriv_shift->get(k, i) +=
               -2.0 * lapse_squared * H * sph_kerr_schild_l_upper.get(0) *
               (inv_jacobian.get(i, j) * inv_jacobian.get(m, j) *
-                   deriv_l.get(
-                       m + 1,
-                       k + 1) +  // think this is syntactically
-                                 // incorrect, but matches spec like this
+                   deriv_l.get(k + 1, m + 1) +
                inv_jacobian.get(i, j) * sph_kerr_schild_l_lower.get(m + 1) *
                    deriv_inv_jacobian.get(k, m, j) +
                inv_jacobian.get(m, j) * sph_kerr_schild_l_lower.get(m + 1) *
@@ -1079,9 +1077,9 @@ void SphKerrSchild::IntermediateComputer<DataType, Frame>::operator()(
                 sph_kerr_schild_l_lower.get(j + 1) * deriv_H.get(k + 1) +
             2.0 * H *
                 (sph_kerr_schild_l_lower.get(i + 1) *
-                     deriv_l.get(j + 1, k + 1) +
+                     deriv_l.get(k + 1, j + 1) +
                  sph_kerr_schild_l_lower.get(j + 1) *
-                     deriv_l.get(i + 1, k + 1));
+                     deriv_l.get(k + 1, i + 1));
         for (int m = 0; m < 3; ++m) {
           deriv_spatial_metric->get(k, i, j) +=
               deriv_jacobian.get(k, m, i) * jacobian.get(m, j) +
