@@ -46,6 +46,9 @@
 #include "Utilities/TMPL.hpp"
 #include "Utilities/TypeTraits.hpp"
 
+#include <iomanip>
+#include <iostream>
+
 /// \cond
 // IWYU pragma: no_forward_declare Tensor
 // IWYU pragma: no_forward_declare Tags::deriv
@@ -116,11 +119,36 @@ void verify_time_independent_einstein_solution(
       get<::Tags::deriv<gr::Tags::SpatialMetric<3, Frame::Inertial, DataVector>,
                         tmpl::size_t<3>, Frame::Inertial>>(vars);
 
+  Approx numerical_approx =
+      Approx::custom().epsilon(error_tolerance).scale(1.0);
+
+  CHECK_ITERABLE_CUSTOM_APPROX(
+      d_lapse,
+      partial_derivative(lapse, mesh, coord_map.inv_jacobian(x_logical)),
+      numerical_approx);
+
+  const auto d_shift_computed =
+      partial_derivative(shift, mesh, coord_map.inv_jacobian(x_logical));
+
+  //   std::cout << d_shift.get(0,1)[0] << "\n" << d_shift.get(1,0)[0] << '\n';
+  //   std::cout << d_shift_computed.get(0,1)[0] << "\n" <<
+  //   d_shift_computed.get(1,0)[0] << '\n'; return;
+
+  CHECK_ITERABLE_CUSTOM_APPROX(
+      d_shift,
+      partial_derivative(shift, mesh, coord_map.inv_jacobian(x_logical)),
+      numerical_approx);
+  CHECK_ITERABLE_CUSTOM_APPROX(
+      d_g, partial_derivative(g, mesh, coord_map.inv_jacobian(x_logical)),
+      numerical_approx);
+
   // Check those quantities that should vanish identically.
   CHECK(get(dt_lapse) == make_with_value<DataVector>(x, 0.));
   CHECK(dt_shift ==
         make_with_value<cpp20::remove_cvref_t<decltype(dt_shift)>>(x, 0.));
   CHECK(dt_g == make_with_value<cpp20::remove_cvref_t<decltype(dt_g)>>(x, 0.));
+
+  std::cout << "DONE 1 \n";
 
   // Need upper spatial metric for many things below.
   const auto upper_spatial_metric = determinant_and_inverse(g).second;
@@ -163,11 +191,14 @@ void verify_time_independent_einstein_solution(
   const auto& d_H =
       get<Tags::deriv<GaugeH, tmpl::size_t<3>, Frame::Inertial>>(gh_derivs);
 
-  Approx numerical_approx =
-      Approx::custom().epsilon(error_tolerance).scale(1.0);
+  //   std::cout << "This is d_psi:" << d_psi.get(1, 1, 1)[0] << "\n";
+  //   std::cout << "This is phi:" << phi.get(1, 1, 1)[0] << "\n";
+  //   return;
 
   // Test 3-index constraint
   CHECK_ITERABLE_CUSTOM_APPROX(d_psi, phi, numerical_approx);
+
+  std::cout << "DONE 2 \n";
 
   // Compute spacetime deriv of H.
   // Assume time derivative of H is zero, for time-independent solution
@@ -227,6 +258,8 @@ void verify_time_independent_einstein_solution(
       upper_psi, pi, phi);
   CHECK_ITERABLE_CUSTOM_APPROX(C_1, make_with_value<decltype(C_1)>(x, 0.0),
                                numerical_approx);
+
+  std::cout << "DONE 3 \n";
 
   // Constraint-damping parameters: Set to arbitrary values.
   // gamma = 0 (for all gammas) and gamma1 = -1 are special because,
@@ -346,10 +379,18 @@ void verify_time_independent_einstein_solution(
   // Make sure the RHS is zero.
   CHECK_ITERABLE_CUSTOM_APPROX(
       dt_psi, make_with_value<decltype(dt_psi)>(x, 0.0), numerical_approx);
+
+  std::cout << "DONE 4 \n";
+
   CHECK_ITERABLE_CUSTOM_APPROX(dt_pi, make_with_value<decltype(dt_pi)>(x, 0.0),
                                numerical_approx);
+
+  std::cout << "DONE 5 \n";
+
   CHECK_ITERABLE_CUSTOM_APPROX(
       dt_phi, make_with_value<decltype(dt_phi)>(x, 0.0), numerical_approx);
+
+  std::cout << "DONE 6 \n";
 }
 
 namespace detail {
@@ -463,6 +504,8 @@ void verify_consistency(const Solution& solution, const double time,
       detail::space_derivative<SpatialMetric>(solution, position, time,
                                               derivative_delta),
       derivative_approx);
+
+  std::cout << "DONE verify consistency test!\n";
 }
 }  // namespace VerifyGrSolution
 }  // namespace TestHelpers
