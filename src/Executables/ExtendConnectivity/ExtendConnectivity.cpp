@@ -25,7 +25,7 @@
 // main module we just have it be empty
 extern "C" void CkRegisterMainModule(void) {}
 
-std::tuple<size_t, size_t, std::tuple<int, int, int>>
+std::tuple<size_t, size_t, std::array<int, 3>>
 compute_expected_connectivity_length(const h5::VolumeData& volume_file,
                                      const size_t& single_obs_id,
                                      const size_t total_number_of_elements) {
@@ -69,10 +69,10 @@ compute_expected_connectivity_length(const h5::VolumeData& volume_file,
        total_number_of_elements) *
       8;
 
-  std::tuple<int, int, int> h_refinement_tuple{h_ref_x, h_ref_y, h_ref_z};
+  std::array<int, 3> h_refinement_array{h_ref_x, h_ref_y, h_ref_z};
 
   return std::tuple{expected_connectivity_length,
-                    expected_number_of_grid_points, h_refinement_tuple};
+                    expected_number_of_grid_points, h_refinement_array};
 }
 
 std::pair<Mesh<3>, std::string> generate_element_properties(
@@ -97,6 +97,8 @@ std::pair<Mesh<3>, std::string> generate_element_properties(
                                          extents[element_number][2]};
 
   auto grid_names = volume_file.get_grid_names(single_obs_id);
+  std::cout << grid_names << '\n';
+
   std::string grid_names_array = grid_names[element_number];
 
   // Generates the mesh
@@ -112,22 +114,14 @@ std::pair<Mesh<3>, std::string> generate_element_properties(
 const tnsr::I<DataVector, 3, Frame::BlockLogical> generate_block_logical_coords(
     const tnsr::I<DataVector, 3, Frame::ElementLogical>& new_coords,
     const std::string& element_id,
-    const std::tuple<int, int, int>& h_refinement_tuple) {
+    const std::array<int, 3>& h_refinement_array) {
   size_t grid_points_x_start_position = 0;
   tnsr::I<DataVector, 3, Frame::BlockLogical> block_logical_coords{
       new_coords.get(0).size(), 0.};
   for (size_t i = 0; i < 3; ++i) {
     double number_of_elements = 0;
-    if (i == 0) {  // definitely a better way to do this. Can't use std::get<i>
-                   // though
-      number_of_elements = pow(2, std::get<0>(h_refinement_tuple));
-    }
-    if (i == 1) {
-      number_of_elements = pow(2, std::get<1>(h_refinement_tuple));
-    }
-    if (i == 2) {
-      number_of_elements = pow(2, std::get<2>(h_refinement_tuple));
-    }
+
+    number_of_elements = pow(2, h_refinement_array[i]);
 
     size_t grid_points_start_position =
         element_id.find("I", grid_points_x_start_position + 1);
@@ -153,17 +147,17 @@ const tnsr::I<DataVector, 3, Frame::BlockLogical> generate_block_logical_coords(
 }
 
 // Functions that compute the connectivity within the block
-std::map<std::tuple<double, double, double>, size_t> generate_grid_point_map(
+std::map<std::array<double, 3>, size_t> generate_grid_point_map(
     const tnsr::I<DataVector, 3, Frame::BlockLogical>& coord_data) {
-  std::map<std::tuple<double, double, double>, size_t> grid_point_map;
+  std::map<std::array<double, 3>, size_t> grid_point_map;
   DataVector coord_data_x = coord_data.get(0);
   DataVector coord_data_y = coord_data.get(1);
   DataVector coord_data_z = coord_data.get(2);
   for (size_t i = 0; i < coord_data_x.size(); ++i) {
-    std::tuple<double, double, double> coord_data_point(
-        coord_data_x[i], coord_data_y[i], coord_data_z[i]);
-    grid_point_map.insert(std::pair<std::tuple<double, double, double>, size_t>(
-        coord_data_point, i));
+    std::array<double, 3> coord_data_point{coord_data_x[i], coord_data_y[i],
+                                           coord_data_z[i]};
+    grid_point_map.insert(
+        std::pair<std::array<double, 3>, size_t>(coord_data_point, i));
   }
   return grid_point_map;
 }
@@ -186,33 +180,37 @@ std::vector<double> sort_and_order(DataVector& data_vector) {
   return ordered_coords;
 }
 
-std::vector<std::tuple<double, double, double>> build_connectivity_by_element(
+std::vector<std::array<double, 3>> build_connectivity_by_element(
     std::vector<double>& sorted_x, std::vector<double>& sorted_y,
     std::vector<double>& sorted_z) {
-  std::vector<std::tuple<double, double, double>> connectivity_as_tuples;
+  std::vector<std::array<double, 3>> connectivity_as_arrays;
   for (size_t k = 0; k < sorted_z.size() - 1; ++k) {
     for (size_t j = 0; j < sorted_y.size() - 1; ++j) {
       for (size_t i = 0; i < sorted_x.size() - 1; ++i) {
-        connectivity_as_tuples.insert(
-            connectivity_as_tuples.end(),
-            {std::make_tuple(sorted_x[i], sorted_y[j], sorted_z[k]),
-             std::make_tuple(sorted_x[i + 1], sorted_y[j], sorted_z[k]),
-             std::make_tuple(sorted_x[i + 1], sorted_y[j + 1], sorted_z[k]),
-             std::make_tuple(sorted_x[i], sorted_y[j + 1], sorted_z[k]),
-             std::make_tuple(sorted_x[i], sorted_y[j], sorted_z[k + 1]),
-             std::make_tuple(sorted_x[i + 1], sorted_y[j], sorted_z[k + 1]),
-             std::make_tuple(sorted_x[i + 1], sorted_y[j + 1], sorted_z[k + 1]),
-             std::make_tuple(sorted_x[i], sorted_y[j + 1], sorted_z[k + 1])});
+        connectivity_as_arrays.insert(
+            connectivity_as_arrays.end(),
+            {std::array<double, 3>{sorted_x[i], sorted_y[j], sorted_z[k]},
+             std::array<double, 3>{sorted_x[i + 1], sorted_y[j], sorted_z[k]},
+             std::array<double, 3>{sorted_x[i + 1], sorted_y[j + 1],
+                                   sorted_z[k]},
+             std::array<double, 3>{sorted_x[i], sorted_y[j + 1], sorted_z[k]},
+             std::array<double, 3>{sorted_x[i], sorted_y[j], sorted_z[k + 1]},
+             std::array<double, 3>{sorted_x[i + 1], sorted_y[j],
+                                   sorted_z[k + 1]},
+             std::array<double, 3>{sorted_x[i + 1], sorted_y[j + 1],
+                                   sorted_z[k + 1]},
+             std::array<double, 3>{sorted_x[i], sorted_y[j + 1],
+                                   sorted_z[k + 1]}});
       }
     }
   }
-  return connectivity_as_tuples;
+  return connectivity_as_arrays;
 }
 
 void generate_new_connectivity(
     tnsr::I<DataVector, 3, Frame::BlockLogical>& block_logical_coords,
     std::vector<int>& new_connectivity) {
-  std::map<std::tuple<double, double, double>, size_t> grid_point_map =
+  std::map<std::array<double, 3>, size_t> grid_point_map =
       generate_grid_point_map(block_logical_coords);
   DataVector logical_coords_x = block_logical_coords.get(0);
   DataVector logical_coords_y = block_logical_coords.get(1);
@@ -220,10 +218,10 @@ void generate_new_connectivity(
   std::vector<double> ordered_x = sort_and_order(logical_coords_x);
   std::vector<double> ordered_y = sort_and_order(logical_coords_y);
   std::vector<double> ordered_z = sort_and_order(logical_coords_z);
-  std::vector<std::tuple<double, double, double>> connectivity_of_tuples =
+  std::vector<std::array<double, 3>> connectivity_of_arrays =
       build_connectivity_by_element(ordered_x, ordered_y, ordered_z);
 
-  for (const std::tuple<double, double, double>& it : connectivity_of_tuples) {
+  for (const std::array<double, 3>& it : connectivity_of_arrays) {
     new_connectivity.push_back(grid_point_map[it]);
   }
 }
@@ -240,7 +238,7 @@ void block_connectivity(const std::string& file_name,
           .size();  // Check this using grid_names for faster parsing?
 
   auto [expected_connectivity_length, expected_number_of_grid_points,
-        h_refinement_tuple] =
+        h_refinement_array] =
       compute_expected_connectivity_length(volume_file, single_obs_id,
                                            total_number_of_elements);
 
@@ -253,7 +251,7 @@ void block_connectivity(const std::string& file_name,
         generate_element_properties(volume_file, single_obs_id, i);
     auto element_logical_coords = logical_coordinates(element_mesh);
     auto block_logical_coords = generate_block_logical_coords(
-        element_logical_coords, element_id, h_refinement_tuple);
+        element_logical_coords, element_id, h_refinement_array);
     for (size_t j = 0 + offset;
          j < (block_logical_coords.get(0).size() + offset); ++j) {
       total_block_logical_coords.get(0)[j] =
