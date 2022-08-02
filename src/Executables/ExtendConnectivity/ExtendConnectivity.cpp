@@ -41,35 +41,27 @@ compute_expected_connectivity_length(const h5::VolumeData& volume_file,
 
   std::string grid_name_string = volume_file.get_grid_names(single_obs_id)[0];
 
-  size_t h_ref_x_start_position = grid_name_string.find("L", 0);
-  size_t h_ref_y_start_position =
-      grid_name_string.find("L", h_ref_x_start_position + 1);
-  size_t h_ref_z_start_position =
-      grid_name_string.find("L", h_ref_y_start_position + 1);
+  std::array<int, 3> h_refinement_array;
+  size_t h_ref_x_start_position = 0;
+  size_t h_ref_x_end_position = 0;
+  for (size_t i = 0; i < 3; ++i) {
+    size_t h_ref_start_position =
+        grid_name_string.find("L", h_ref_x_start_position + 1);
+    size_t h_ref_end_position =
+        grid_name_string.find("I", h_ref_x_end_position + 1);
+    int h_ref = std::stoi(
+        grid_name_string.substr(h_ref_start_position + 1,
+                                h_ref_end_position - h_ref_start_position - 1));
+    h_refinement_array[i] = h_ref;
+    h_ref_x_start_position = h_ref_start_position;
+    h_ref_x_end_position = h_ref_end_position;
+  }
 
-  size_t h_ref_x_end_position = grid_name_string.find("I", 0);
-  size_t h_ref_y_end_position =
-      grid_name_string.find("I", h_ref_x_end_position + 1);
-  size_t h_ref_z_end_position =
-      grid_name_string.find("I", h_ref_y_end_position + 1);
-
-  int h_ref_x = std::stoi(grid_name_string.substr(
-      h_ref_x_start_position + 1,
-      h_ref_x_end_position - h_ref_x_start_position - 1));
-  int h_ref_y = std::stoi(grid_name_string.substr(
-      h_ref_y_start_position + 1,
-      h_ref_y_end_position - h_ref_y_start_position - 1));
-  int h_ref_z = std::stoi(grid_name_string.substr(
-      h_ref_z_start_position + 1,
-      h_ref_z_end_position - h_ref_z_start_position - 1));
-
-  expected_connectivity_length +=
-      ((pow(2, h_ref_x + 1) - 1) * (pow(2, h_ref_y + 1) - 1) *
-           (pow(2, h_ref_z + 1) - 1) -
-       total_number_of_elements) *
-      8;
-
-  std::array<int, 3> h_refinement_array{h_ref_x, h_ref_y, h_ref_z};
+  expected_connectivity_length += ((pow(2, h_refinement_array[0] + 1) - 1) *
+                                       (pow(2, h_refinement_array[1] + 1) - 1) *
+                                       (pow(2, h_refinement_array[2] + 1) - 1) -
+                                   total_number_of_elements) *
+                                  8;
 
   return std::tuple{expected_connectivity_length,
                     expected_number_of_grid_points, h_refinement_array};
@@ -120,16 +112,12 @@ const tnsr::I<DataVector, 3, Frame::BlockLogical> generate_block_logical_coords(
       new_coords.get(0).size(), 0.};
   for (size_t i = 0; i < 3; ++i) {
     double number_of_elements = 0;
-
     number_of_elements = pow(2, h_refinement_array[i]);
-
     size_t grid_points_start_position =
         element_id.find("I", grid_points_x_start_position + 1);
-    size_t grid_points_end_position = 0;
-    if (i != 2) {
-      grid_points_end_position =
-          element_id.find(",", grid_points_start_position);
-    } else {
+    size_t grid_points_end_position =
+        element_id.find(",", grid_points_start_position);
+    if (i == 2) {
       grid_points_end_position =
           element_id.find(")", grid_points_start_position);
     }
