@@ -88,14 +88,8 @@ def generate_new_connectivity(inertial_coords_x, inertial_coords_y,
     connectivity = []
     j = 0
     for i in connectivity_of_tuples:
-        # print(i)
-        if i == connectivity_of_tuples[0]:
-            continue
-        else:
-            connectivity.append(grid_point_dictionary[i])
+        connectivity.append(grid_point_dictionary[i])
 
-    end = time.time()
-    print("generate_new_connectivity runtime: " + str(end - start))
     return connectivity
 
 
