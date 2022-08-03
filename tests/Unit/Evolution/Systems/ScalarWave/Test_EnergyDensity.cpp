@@ -51,6 +51,7 @@ void test_energy_density(const DataVector& used_for_size) {
       &ScalarWave::energy_density<SpatialDim>;
   pypp::check_with_random_values<1>(f, "EnergyDensity", {"energy_density"},
                                     {{{-1., 1.}}}, used_for_size);
+  test_compute_item_in_databox<SpatialDim>(used_for_size);
 }
 }  // namespace
 

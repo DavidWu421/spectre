@@ -36,6 +36,9 @@ Scalar<DataVector> energy_density(
 #define INSTANTIATE(_, data)                                                   \
   template void ScalarWave::energy_density(                                    \
       gsl::not_null<Scalar<DataVector>*> result, const Scalar<DataVector>& pi, \
+      const tnsr::i<DataVector, DIM(data), Frame::Inertial>& phi);             \
+  template Scalar<DataVector> ScalarWave::energy_density(                      \
+      const Scalar<DataVector>& pi,                                            \
       const tnsr::i<DataVector, DIM(data), Frame::Inertial>& phi);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
