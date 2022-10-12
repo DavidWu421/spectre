@@ -32,6 +32,7 @@ target_link_libraries(
   Spectral
   Utilities
   PRIVATE
+  Domain
   Informer
   INTERFACE
   Spectral
