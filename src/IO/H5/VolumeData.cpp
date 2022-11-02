@@ -399,19 +399,26 @@ compute_element_refinements_and_indices(
 }
 
 template <size_t SpatialDim>
-std::vector<SegmentId> compute_segmentId(
+std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
     const std::vector<std::string>& block_grid_names) {
   std::vector<std::array<SegmentId, SpatialDim>> SegmentIds = {};
 
   std::pair<std::vector<std::array<int, SpatialDim>>,
             std::vector<std::array<int, SpatialDim>>>
-      refinement_and_indices = {};
-  refinement_and_indices =
-      compute_element_refinements_and_indices(block_grid_names);
-  // For some reason, it doesn't recognize the funciton I wrote above. Somehow
-  // the types disagree or something and I can't figure it out
+      refinement_and_indices =
+          compute_element_refinements_and_indices<SpatialDim>(block_grid_names);
   for (size_t i = 0; i < block_grid_names.size(); ++i) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      SegmentId current_seg_id(refinement_and_indices[1][i][j],
+                               refinement_and_indices[0][i][j]);
+      // When testing, the above line may have a problem because SegmentId
+      // constructor just takes in the size_t of the index and the refinement,
+      // but what I actually passed in might have a SpatialDim as well, I'm not
+      // sure, it needs testing
+      SegmentIds.push_back(current_seg_id);
+    }
   }
+  return SegmentIds;
 }
 
 // template <size_t SpatialDim>
