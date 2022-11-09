@@ -421,6 +421,15 @@ std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
   return SegmentIds;
 }
 
+// Want to write a function that takes in the vector or arrays of the segmentIds
+// of each element. Then the function loops through each element and checks with
+// every other element whether or not it is a neighbor to the first. Shouldn't
+// double check elements and shouldn't consider diagonal elements as neighbors.
+// Should use the overlap function and maybe the midpoint function to check the
+// diagonal neighbors. Once it identifies the neighbors, it needs to identify
+// whether or not the neightbors have the same refinement which comes from the
+// extents or one of those variables.
+
 // template <size_t SpatialDim>
 // std::vector<std::array<double, SpatialDim>> sort_and_order_block_logical(
 //     std::vector<std::array<double, SpatialDim>>& block_logical_coordinates) {
