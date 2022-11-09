@@ -19,6 +19,7 @@
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "DataStructures/Tensor/TensorData.hpp"
 #include "Domain/LogicalCoordinates.hpp"
+#include "Domain/Structure/SegmentId.hpp"
 #include "IO/Connectivity.hpp"
 #include "IO/H5/AccessType.hpp"
 #include "IO/H5/Header.hpp"
@@ -336,6 +337,159 @@ std::vector<std::array<double, SpatialDim>> generate_block_logical_coordinates(
 
   return block_logical_coordinates;
 }
+
+// Overall Logic: sort_and_order_block_logical sorts the
+// block_logical_coordinates in a way such that neighbors of a particular
+// element can be identified by the way the coordinates are sorted. This is done
+// through identify_neighbors which may be changed to work for the current
+// element of interest rather than all at once. Then identify neighbor
+// refinement uses these functions to loop through each element, and identify if
+// the refinement with each of it's neighbors is the same. If they are not, it
+// will flag that element and neighbor to NOT try to complete that connectivity
+// since its not a one to one map of grid points.
+
+// Line 258 for refinement
+// Line 319 for element index
+
+template <size_t SpatialDim>
+std::pair<std::vector<std::array<int, SpatialDim>>,
+          std::vector<std::array<int, SpatialDim>>>
+compute_element_refinements_and_indices(
+    const std::vector<std::string>& block_grid_names) {
+  std::vector<std::array<int, SpatialDim>> h_ref_array = {};
+  for (size_t i = 0; i < block_grid_names.size(); ++i) {
+    std::string grid_name_string = block_grid_names[i];
+    size_t h_ref_previous_start_position = 0;
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      size_t h_ref_start_position =
+          grid_name_string.find('L', h_ref_previous_start_position + 1);
+      size_t h_ref_end_position =
+          grid_name_string.find('I', h_ref_start_position);
+      size_t h_ref = std::stoi(grid_name_string.substr(
+          h_ref_start_position + 1,
+          h_ref_end_position - h_ref_start_position - 1));
+      h_ref_array[i][j] = h_ref;
+      h_ref_previous_start_position = h_ref_start_position;
+    }
+  }
+
+  size_t grid_points_x_start_position = 0;
+  std::vector<std::array<int, SpatialDim>> indices_of_elements = {};
+  for (size_t i = 0; i < block_grid_names.size(); ++i) {
+    std::array<int, SpatialDim> indices_of_element = {};
+    std::string grid_name = block_grid_names[i];
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      size_t grid_points_start_position =
+          grid_name.find('I', grid_points_x_start_position + 1);
+      size_t grid_points_end_position =
+          grid_name.find(',', grid_points_start_position);
+      if (j == SpatialDim) {
+        grid_points_end_position =
+            grid_name.find(')', grid_points_start_position);
+      }
+      size_t current_element_index = std::stoi(grid_name.substr(
+          grid_points_start_position + 1,
+          grid_points_end_position - grid_points_start_position - 1));
+      indices_of_element[j] = current_element_index;
+    }
+    indices_of_elements.push_back(indices_of_element);
+  }
+
+  return std::pair{indices_of_elements, h_ref_array};
+}
+
+template <size_t SpatialDim>
+std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
+    const std::vector<std::string>& block_grid_names) {
+  std::vector<std::array<SegmentId, SpatialDim>> SegmentIds = {};
+
+  std::pair<std::vector<std::array<int, SpatialDim>>,
+            std::vector<std::array<int, SpatialDim>>>
+      refinement_and_indices =
+          compute_element_refinements_and_indices<SpatialDim>(block_grid_names);
+  for (size_t i = 0; i < block_grid_names.size(); ++i) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      SegmentId current_seg_id(refinement_and_indices[1][i][j],
+                               refinement_and_indices[0][i][j]);
+      // When testing, the above line may have a problem because SegmentId
+      // constructor just takes in the size_t of the index and the refinement,
+      // but what I actually passed in might have a SpatialDim as well, I'm not
+      // sure, it needs testing
+      SegmentIds.push_back(current_seg_id);
+    }
+  }
+  return SegmentIds;
+}
+
+// Want to write a function that takes in the vector or arrays of the segmentIds
+// of each element. Then the function loops through each element and checks with
+// every other element whether or not it is a neighbor to the first. Shouldn't
+// double check elements and shouldn't consider diagonal elements as neighbors.
+// Should use the overlap function and maybe the midpoint function to check the
+// diagonal neighbors. Once it identifies the neighbors, it needs to identify
+// whether or not the neightbors have the same refinement which comes from the
+// extents or one of those variables.
+
+// template <size_t SpatialDim>
+// std::vector<std::array<double, SpatialDim>> sort_and_order_block_logical(
+//     std::vector<std::array<double, SpatialDim>>& block_logical_coordinates) {
+//   std::vector<std::array<double, SpatialDim>>
+//   sorted_block_logical_coordinates;
+//   // Come up with way to figure out unsorted_coordinate length. Maybe number
+//   of
+//   // grid points???
+//   sort(block_logical_coordinates.begin(), block_logical_coordinates.end());
+//   sorted_block_logical_coordinates.push_back(block_logical_coordinates[0]);
+//   for (size_t i = 1; i < block_logical_coordinates.size(); ++i) {
+//     if (block_logical_coordinates[i] ==
+//         sorted_block_logical_coordinates.end()[-1]) {
+//       continue;
+//     } else {
+//       sorted_block_logical_coordinates.push_back(block_logi
+// cal_coordinates[i]);
+//     }
+//   }
+//   return sorted_block_logical_coordinates;
+// }
+
+// template <size_t SpatialDim>
+// std::vector<std::array<double, SpatialDim>> identify_neightbors(
+//     std::vector<std::array<double, SpatialDim>>&
+//         sorted_block_logical_coordinates) {
+//   std::unordered_map<std::vector<std::array<double, SpatialDim>>,
+//                      std::array<double, SpatialDim>>
+//       neighbor_map;
+//   for (size_t i = 0; i < sorted_block_logical_coordinates.size(); ++i) {
+//     std::array<double, SpatialDim> current_element =
+//         sorted_block_logical_coordinates[i];
+//   }
+// }
+
+// template <size_t SpatialDim>
+// double identify_neighbor_refinement(
+//     const std::vector<std::array<double, SpatialDim>>&
+//         sorted_block_logical_coordinates) {
+//   std::unordered_map<std::array<double, SpatialDim>, int> element_map;
+//   for (size_t i = 0; i < sorted_block_logical_coordinates.size(); ++i) {
+//     element_map[sorted_block_logical_coordinates[i]] = i;
+//   }
+//   int starter_counter = 0;
+//   for (size_t i = 0; i < sorted_block_logical_coordinates.size(); ++i) {
+//     std::array<double, SpatialDim> current_element =
+//         sorted_block_logical_coordinates[i];
+//     // need function that gets neighbor elements from the current element and
+//     // the sorted block_logical_coordinates need function that finds the
+//     // refinment of current_element and neighbor_element
+//     double neighbor_refinement = 1;
+//     double self_refinement = 1;
+//     if (neighbor_refinement == self_refinement) {
+//       return 1;
+//     } else {
+//       return 0;
+//     }
+//     starter_counter += 1;
+//   }
+// }
 
 // Sorting routine for an incoming list of values
 std::vector<double> sort_and_order(std::vector<double>& unsorted_coordinate) {
