@@ -18,7 +18,7 @@
 #include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 #include "DataStructures/Tensor/TensorData.hpp"
-#include "Domain/LogicalCoordinates.hpp"
+// #include "Domain/LogicalCoordinates.hpp"
 #include "Domain/Structure/SegmentId.hpp"
 #include "IO/Connectivity.hpp"
 #include "IO/H5/AccessType.hpp"
@@ -27,6 +27,7 @@
 #include "IO/H5/SpectralIo.hpp"
 #include "IO/H5/Type.hpp"
 #include "IO/H5/Version.hpp"
+#include "NumericalAlgorithms/Spectral/LogicalCoordinates.hpp"
 #include "NumericalAlgorithms/Spectral/Mesh.hpp"
 #include "NumericalAlgorithms/Spectral/Spectral.hpp"
 #include "Utilities/Algorithm.hpp"
@@ -421,6 +422,49 @@ std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
   return SegmentIds;
 }
 
+template <size_t SpatialDim>
+std::vector<std::array<SegmentId, SpatialDim>> neighbors(
+    std::array<SegmentId, SpatialDim> SegmentIds,
+    std::array<SegmentId, SpatialDim> element) {
+  std::vector<std::array<SegmentId, SpatialDim>> neighbors = {};
+  for (size_t i = 0; i < SegmentIds.size(); ++i) {
+    std::vector<bool> identification = {};
+    for (size_t j = 0; j < SegmentIds[i].size(); ++j) {
+      identification.push_back(element.overlap(SegmentIds[i][j]));
+    }
+    int number_of_overlaps =
+        identification[0] + identification[1] + identification[2];
+    if (number_of_overlaps == 2) {
+      neighbors.push_back(SegmentIds[i]);
+    }
+  }
+  return neighbors;
+}
+
+template <size_t SpatialDim>
+std::vector<std::tuple<std::array<SegmentId, SpatialDim>, int>>
+neighbor_refinement_filter(std::array<SegmentId, SpatialDim> neighbors,
+                           std::array<SegmentId, SpatialDim> element) {
+  std::vector<std::tuple<std::array<SegmentId, SpatialDim>, int>>
+      refined_neighbors = {};
+  for (size_t i = 0; i < neighbors.size(); ++i) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      if (element[j].overlap(neighbors[i][j]) == true) {
+        // This line eliminates neighbors from the list that do not have the
+        // same refinement as the element of interest. This need to be written
+        // much more efficiently though, as each element needs to be passes
+        // through this function. Although this may be less of a problem if
+        // there aren't duplicate neighbors in neighbor lists for different
+        // elements.
+        if (element[j].refinement_level() ==
+            neighbors[i][j].refinement_level()) {
+          refined_neighbors.push_back(neighbors[i]);
+        }
+      }
+    }
+  }
+  return refined_neighbors;
+}
 // Want to write a function that takes in the vector or arrays of the segmentIds
 // of each element. Then the function loops through each element and checks with
 // every other element whether or not it is a neighbor to the first. Shouldn't
@@ -430,15 +474,42 @@ std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
 // whether or not the neightbors have the same refinement which comes from the
 // extents or one of those variables.
 
+// Trying to write a function, that given a neighbor, identify which direction
+// the neighbor is in, both in the sense of on what axis it is a neighbor, and
+// which direction on that axis. This function should be combined with the one
+// that identifies the neighbor because it does the same computaiton multiple
+// times.
+
+template <size_t SpatialDim>
+int neighbor_direction(std::array<SegmentId, SpatialDim> element,
+                       std::array<SegmentId, SpatialDim> neighbor_element) {
+  int overlap_direction = 0;
+  double elem_lower = element.endpoint(Side::Lower);
+  double neigh_upper = neighbor_element.endpoint(Side::Upper);
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    if (element[i].overlap(neighbor_element[i]) == true) {
+      overlap_direction = i + 1;
+    }
+    if (elem_lower == neigh_upper) {
+      overlap_direction *= -1;
+    }
+    // Don't need anything in the opposite direction because it's just
+    // multiplying by +1
+  }
+  return overlap_direction;
+}
+
 // template <size_t SpatialDim>
 // std::vector<std::array<double, SpatialDim>> sort_and_order_block_logical(
-//     std::vector<std::array<double, SpatialDim>>& block_logical_coordinates) {
+//     std::vector<std::array<double, SpatialDim>>&
+//     block_logical_coordinates) {
 //   std::vector<std::array<double, SpatialDim>>
 //   sorted_block_logical_coordinates;
-//   // Come up with way to figure out unsorted_coordinate length. Maybe number
-//   of
+//   // Come up with way to figure out unsorted_coordinate length. Maybe
+//   number of
 //   // grid points???
-//   sort(block_logical_coordinates.begin(), block_logical_coordinates.end());
+//   sort(block_logical_coordinates.begin(),
+//   block_logical_coordinates.end());
 //   sorted_block_logical_coordinates.push_back(block_logical_coordinates[0]);
 //   for (size_t i = 1; i < block_logical_coordinates.size(); ++i) {
 //     if (block_logical_coordinates[i] ==
@@ -477,7 +548,8 @@ std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
 //   for (size_t i = 0; i < sorted_block_logical_coordinates.size(); ++i) {
 //     std::array<double, SpatialDim> current_element =
 //         sorted_block_logical_coordinates[i];
-//     // need function that gets neighbor elements from the current element and
+//     // need function that gets neighbor elements from the current element
+//     and
 //     // the sorted block_logical_coordinates need function that finds the
 //     // refinment of current_element and neighbor_element
 //     double neighbor_refinement = 1;
@@ -494,8 +566,8 @@ std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
 // Sorting routine for an incoming list of values
 std::vector<double> sort_and_order(std::vector<double>& unsorted_coordinate) {
   std::vector<double> sorted_coordinate;
-  // Come up with way to figure out unsorted_coordinate length. Maybe number of
-  // grid points???
+  // Come up with way to figure out unsorted_coordinate length. Maybe number
+  // of grid points???
   sort(unsorted_coordinate.begin(), unsorted_coordinate.end());
   sorted_coordinate.push_back(unsorted_coordinate[0]);
   for (size_t i = 1; i < unsorted_coordinate.size(); ++i) {
@@ -974,8 +1046,8 @@ std::vector<std::string> VolumeData::list_tensor_components(
   remove_data_name("grid_names");
   remove_data_name("quadratures");
   remove_data_name("bases");
-  // std::remove moves the element to the end of the vector, so we still need to
-  // actually erase it from the vector
+  // std::remove moves the element to the end of the vector, so we still need
+  // to actually erase it from the vector
   tensor_components.erase(
       tensor_components.end() - number_of_components_to_remove,
       tensor_components.end());
