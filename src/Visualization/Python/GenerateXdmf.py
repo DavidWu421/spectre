@@ -3,49 +3,36 @@
 # Distributed under the MIT License.
 # See LICENSE.txt for details.
 
-import click
 import glob
 import h5py
 import logging
 import numpy as np
-import rich
 import sys
-from spectre.Visualization.ReadH5 import available_subfiles
 
 
-def generate_xdmf(h5files, output, subfile_name, start_time, stop_time, stride,
-                  coordinates):
-    """Generate an XDMF file for ParaView and VisIt
-
-    Read volume data from the 'H5FILES' and generate an XDMF file. The XDMF
-    file points into the 'H5FILES' files so ParaView and VisIt can load the
-    volume data. To process multiple files suffixed with the node number,
-    specify a glob like 'VolumeData*.h5'.
-
-    To load the XDMF file in ParaView you must choose the 'Xdmf Reader', NOT
-    'Xdmf3 Reader'.
+def generate_xdmf(file_prefix, output, subfile_name, start_time, stop_time,
+                  stride, coordinates):
     """
-    # CLI scripts should be noops when input is empy
-    if not h5files:
-        return
+    Generate one XDMF file that ParaView and VisIt can use to load the data
+    out of the HDF5 files.
+    """
+    if sys.version_info < (3, 0):
+        logging.warning("You are attempting to run this script with "
+                        "python 2, which is deprecated. GenerateXdmf.py might "
+                        "hang or run very slowly using python 2. Please use "
+                        "python 3 instead.")
 
-    h5files = [(h5py.File(filename, 'r'), filename) for filename in h5files]
+    h5files = [(h5py.File(filename, 'r'), filename)
+               for filename in glob.glob(file_prefix + "[0-9]*.h5")]
 
-    if not subfile_name:
-        import rich.columns
-        rich.print(
-            rich.columns.Columns(
-                available_subfiles(h5files[0][0], extension=".vol")))
-        return
+    assert len(h5files) > 0, "No H5 files with prefix '{}' found.".format(
+        file_prefix)
 
-    if not subfile_name.endswith(".vol"):
-        subfile_name += ".vol"
-
-    element_data = h5files[0][0].get(subfile_name)
+    element_data = h5files[0][0].get(subfile_name + '.vol')
     if element_data is None:
-        raise ValueError(
-            f"Could not open subfile name '{subfile_name}'. Available "
-            f"subfiles: {available_subfiles(h5files[0][0], extension='.vol')}")
+        raise ValueError(("Could not open subfile name '{}.vol'. Available "
+                          "subfiles: {}").format(subfile_name,
+                                                 h5files[0][0].keys()))
     temporal_ids_and_values = [(x,
                                 element_data.get(x).attrs['observation_value'])
                                for x in element_data.keys()]
@@ -61,9 +48,9 @@ def generate_xdmf(h5files, output, subfile_name, start_time, stop_time, stride,
     # counter used to enforce the stride
     stride_counter = 0
     for id_and_value in temporal_ids_and_values:
-        if start_time is not None and id_and_value[1] < start_time:
+        if id_and_value[1] < start_time:
             continue
-        if stop_time is not None and id_and_value[1] > stop_time:
+        if id_and_value[1] > stop_time:
             break
 
         stride_counter += 1
@@ -82,7 +69,8 @@ def generate_xdmf(h5files, output, subfile_name, start_time, stop_time, stride,
         while not done:
             # loop over each h5 file
             for h5file in h5files:
-                h5temporal = h5file[0].get(subfile_name).get(id_and_value[0])
+                h5temporal = h5file[0].get(subfile_name + '.vol').get(
+                    id_and_value[0])
                 # Skip this file if the observation does not exist in it.
                 # Usually this is because the program crashed before
                 # writing it.  Data in other files will still be processed
@@ -142,18 +130,19 @@ def generate_xdmf(h5files, output, subfile_name, start_time, stop_time, stride,
                 # Because we can't have zero cells if rendering a 2d surface,
                 # return 1 in that case.
                 number_of_cells = 1
+                # This is used to compute the number of elements rather than
+                # the extents in case the connectivity is greater than what
+                # extents predicts
+                connectivity_length = len(h5temporal.get("connectivity"))
                 if filling_poles_this_iteration:
                     # Number_of_cells == pole_connectivity size / 3
                     # because we are using triangles to fill the poles
                     number_of_cells = h5temporal.get(
                         'pole_connectivity').size / 3
-                elif is_2d_surface_in_3d_space:
-                    # Number_of_cells == l * (2*l + 1)
-                    number_of_cells = sum((extents_x - 1) * extents_y)
+                elif is_2d_surface_in_3d_space or dimensionality == 2:
+                    number_of_cells = connectivity_length / 4
                 else:
-                    number_of_cells = sum(
-                        (extents_x - 1) * (extents_y - 1) *
-                        (extents_z - 1 if dimensionality == 3 else 1))
+                    number_of_cells = connectivity_length / 8
 
                 topology = "Hexahedron"
                 vertices = 8
@@ -195,7 +184,7 @@ def generate_xdmf(h5files, output, subfile_name, start_time, stop_time, stride,
 
                 # Configure grid location
                 Grid_path = ("          {}:/".format(h5file[1]) +
-                             subfile_name + "/{}".format(id_and_value[0]))
+                             subfile_name + ".vol/{}".format(id_and_value[0]))
                 xdmf_output += (
                     "    <Grid Name=\"%s\" GridType=\"Uniform\">\n" %
                     (h5file[1]))
@@ -258,10 +247,6 @@ def generate_xdmf(h5files, output, subfile_name, start_time, stop_time, stride,
                 components.remove('grid_names')
                 components.remove('bases')
                 components.remove('quadratures')
-                if 'domain' in components:
-                    components.remove('domain')
-                if 'functions_of_time' in components:
-                    components.remove('functions_of_time')
 
                 # Write the tensors that are to be visualized.
                 for component in components:
@@ -316,61 +301,64 @@ def generate_xdmf(h5files, output, subfile_name, start_time, stop_time, stride,
                 # close time grid
                 xdmf_output += "  </Grid>\n"
 
-    xdmf_output += "</Grid>\n</Domain>\n</Xdmf>\n"
+    xdmf_output += "</Grid>\n</Domain>\n</Xdmf>"
 
     for h5file in h5files:
         h5file[0].close()
 
-    if output:
-        if not output.endswith(".xmf"):
-            output += ".xmf"
-        with open(output, "w") as xmf_file:
-            xmf_file.write(xdmf_output)
-    else:
-        sys.stdout.write(xdmf_output)
+    with open(output + ".xmf", "w") as xmf_file:
+        xmf_file.write(xdmf_output)
 
 
-@click.command(help=generate_xdmf.__doc__)
-@click.argument('h5files',
-                type=click.Path(exists=True,
-                                file_okay=True,
-                                dir_okay=False,
-                                readable=True),
-                nargs=-1)
-@click.option('--output',
-              '-o',
-              type=click.Path(writable=True),
-              help=("Output file name, an xmf extension will be added. "
-                    "If unspecified, the output will be written to stdout."))
-@click.option(
-    '--subfile-name',
-    '-d',
-    help=("Name of the volume data subfile in the H5 files. A '.vol' "
-          "extension is added if needed. If unspecified, list all '.vol' "
-          "subfiles and exit."))
-@click.option("--stride",
-              default=1,
-              type=int,
-              help="View only every stride'th time step")
-@click.option(
-    "--start-time",
-    type=float,
-    help=("The earliest time at which to start visualizing. The start-time "
-          "value is included."))
-@click.option(
-    "--stop-time",
-    type=float,
-    help=("The time at which to stop visualizing. The stop-time value is "
-          "not included."))
-@click.option("--coordinates",
-              default="InertialCoordinates",
-              show_default=True,
-              help="The coordinates to use for visualization")
-def generate_xdmf_command(**kwargs):
-    _rich_traceback_guard = True  # Hide traceback until here
-    generate_xdmf(**kwargs)
+def parse_args():
+    """
+    Parse the command line arguments
+    """
+    import argparse as ap
+    parser = ap.ArgumentParser(
+        description="Generate XDMF file for visualizing SpECTRE data. "
+        "To load the XDMF file in ParaView you must choose the 'Xdmf Reader', "
+        "NOT 'Xdmf3 Reader'",
+        formatter_class=ap.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        '--file-prefix',
+        required=True,
+        help="The common prefix of the H5 volume files to load, excluding "
+        "the node number integer(s)")
+    parser.add_argument(
+        '--output',
+        '-o',
+        required=True,
+        help="Output file name, an xmf extension will be added")
+    parser.add_argument(
+        '--subfile-name',
+        '-d',
+        required=True,
+        help="Name of the volume data subfile in the H5 files, excluding the "
+        "'.vol' extension")
+    parser.add_argument("--stride",
+                        default=1,
+                        type=int,
+                        help="View only every stride'th time step")
+    parser.add_argument(
+        "--start-time",
+        default=0.0,
+        type=float,
+        help="The earliest time at which to start visualizing. The start-time "
+        "value is included.")
+    parser.add_argument(
+        "--stop-time",
+        default=1e300,
+        type=float,
+        help="The time at which to stop visualizing. The stop-time value is "
+        "not included.")
+    parser.add_argument("--coordinates",
+                        default="InertialCoordinates",
+                        help="The coordinates to use for visualization")
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    generate_xdmf_command(help_option_names=["-h", "--help"])
+    input_args = parse_args()
+    generate_xdmf(**vars(input_args))

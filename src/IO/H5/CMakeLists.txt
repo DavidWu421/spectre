@@ -59,6 +59,7 @@ target_link_libraries(
   Utilities
   Spectral
   PRIVATE
+  Domain
   Informer
   IO
   )
