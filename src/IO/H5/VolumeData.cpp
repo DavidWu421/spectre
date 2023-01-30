@@ -427,6 +427,50 @@ std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
   return SegmentIds;
 }
 
+template <size_t SpatialDim>
+std::vector<std::array<SegmentId, SpatialDim>> neighbors(
+    std::array<SegmentId, SpatialDim> SegmentIds,
+    std::array<SegmentId, SpatialDim> element) {
+  std::vector<std::array<SegmentId, SpatialDim>> neighbors = {};
+  for (size_t i = 0; i < SegmentIds.size(); ++i) {
+    std::vector<bool> identification = {};
+    for (size_t j = 0; j < SegmentIds[i].size(); ++j) {
+      identification.push_back(element.overlap(SegmentIds[i][j]));
+    }
+    int number_of_overlaps =
+        identification[0] + identification[1] + identification[2];
+    if (number_of_overlaps == 2) {
+      neighbors.push_back(SegmentIds[i]);
+    }
+  }
+  return neighbors;
+}
+
+template <size_t SpatialDim>
+std::vector<std::tuple<std::array<SegmentId, SpatialDim>, int>>
+neighbor_refinement_filter(std::array<SegmentId, SpatialDim> neighbors,
+                           std::array<SegmentId, SpatialDim> element) {
+  std::vector<std::tuple<std::array<SegmentId, SpatialDim>, int>>
+      refined_neighbors = {};
+  for (size_t i = 0; i < neighbors.size(); ++i) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      if (element[j].overlap(neighbors[i][j]) == true) {
+        // This line eliminates neighbors from the list that do not have the
+        // same refinement as the element of interest. This need to be written
+        // much more efficiently though, as each element needs to be passes
+        // through this function. Although this may be less of a problem if
+        // there aren't duplicate neighbors in neighbor lists for different
+        // elements.
+        if (element[j].refinement_level() ==
+            neighbors[i][j].refinement_level()) {
+          refined_neighbors.push_back(neighbors[i]);
+        }
+      }
+    }
+  }
+  return refined_neighbors;
+}
+
 // Want to write a function that takes in the vector or arrays of the segmentIds
 // of each element. Then the function loops through each element and checks with
 // every other element whether or not it is a neighbor to the first. Shouldn't
@@ -435,6 +479,31 @@ std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
 // diagonal neighbors. Once it identifies the neighbors, it needs to identify
 // whether or not the neightbors have the same refinement which comes from the
 // extents or one of those variables.
+
+// Trying to write a function, that given a neighbor, identify which direction
+// the neighbor is in, both in the sense of on what axis it is a neighbor, and
+// which direction on that axis. This function should be combined with the one
+// that identifies the neighbor because it does the same computaiton multiple
+// times.
+
+template <size_t SpatialDim>
+int neighbor_direction(std::array<SegmentId, SpatialDim> element,
+                       std::array<SegmentId, SpatialDim> neighbor_element) {
+  int overlap_direction = 0;
+  double elem_lower = element.endpoint(Side::Lower);
+  double neigh_upper = neighbor_element.endpoint(Side::Upper);
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    if (element[i].overlap(neighbor_element[i]) == true) {
+      overlap_direction = i + 1;
+    }
+    if (elem_lower == neigh_upper) {
+      overlap_direction *= -1;
+    }
+    // Don't need anything in the opposite direction because it's just
+    // multiplying by +1
+  }
+  return overlap_direction;
+}
 
 // template <size_t SpatialDim>
 // std::vector<std::array<double, SpatialDim>> sort_and_order_block_logical(
@@ -496,7 +565,6 @@ std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
 //     starter_counter += 1;
 //   }
 // }
-
 
 // Sorting routine for an incoming list of values
 std::vector<double> sort_and_order(std::vector<double>& unsorted_coordinate) {
