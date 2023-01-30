@@ -402,6 +402,8 @@ compute_element_refinements_and_indices(
   }
 
   return std::pair{indices_of_elements, h_ref_array};
+  // We now have the indices of each element (3 per element for each dimension)
+  // and the corresponding h_refinement for all elements.
 }
 
 template <size_t SpatialDim>
@@ -425,6 +427,8 @@ std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
     }
   }
   return SegmentIds;
+  // Now we have the segment ID's for each element (3 for each element for each
+  // dimension)
 }
 
 template <size_t SpatialDim>
@@ -441,9 +445,12 @@ std::vector<std::array<SegmentId, SpatialDim>> neighbors(
         identification[0] + identification[1] + identification[2];
     if (number_of_overlaps == 2) {
       neighbors.push_back(SegmentIds[i]);
+      // needs to overlap in 2 and only 2 dimensions to be a face to face
+      // neighbor
     }
   }
   return neighbors;
+  // returns a std::vector of the neighbors of one particular input element
 }
 
 template <size_t SpatialDim>
@@ -469,6 +476,8 @@ neighbor_refinement_filter(std::array<SegmentId, SpatialDim> neighbors,
     }
   }
   return refined_neighbors;
+  // Now we have a std::vector of the neightbors that only have the same
+  // refinement as the particular element of interest
 }
 
 // Want to write a function that takes in the vector or arrays of the segmentIds
@@ -503,6 +512,9 @@ int neighbor_direction(std::array<SegmentId, SpatialDim> element,
     // multiplying by +1
   }
   return overlap_direction;
+  // Given an element of interest and a neighbor element (for now with the same
+  // refinement), returns the direction of the overlap between the two elements,
+  // ie. which side the neighbor is on
 }
 
 // template <size_t SpatialDim>
@@ -511,8 +523,7 @@ int neighbor_direction(std::array<SegmentId, SpatialDim> element,
 //   std::vector<std::array<double, SpatialDim>>
 //   sorted_block_logical_coordinates;
 //   // Come up with way to figure out unsorted_coordinate length. Maybe number
-//   of
-//   // grid points???
+//   // of grid points???
 //   sort(block_logical_coordinates.begin(), block_logical_coordinates.end());
 //   sorted_block_logical_coordinates.push_back(block_logical_coordinates[0]);
 //   for (size_t i = 1; i < block_logical_coordinates.size(); ++i) {
@@ -520,8 +531,8 @@ int neighbor_direction(std::array<SegmentId, SpatialDim> element,
 //         sorted_block_logical_coordinates.end()[-1]) {
 //       continue;
 //     } else {
-//       sorted_block_logical_coordinates.push_back(block_logi
-// cal_coordinates[i]);
+//       sorted_block_logical_coordinates.push_back(block_lo
+// gical_coordinates[i]);
 //     }
 //   }
 //   return sorted_block_logical_coordinates;
