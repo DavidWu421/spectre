@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <iostream>
+
 #include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 // #include "Domain/LogicalCoordinates.hpp"
@@ -401,6 +403,7 @@ compute_element_refinements_and_indices(
     indices_of_elements.push_back(indices_of_element);
   }
 
+  std::cout << std::pair{indices_of_elements, h_ref_array} << "\n";
   return std::pair{indices_of_elements, h_ref_array};
   // We now have the indices of each element (3 per element for each dimension)
   // and the corresponding h_refinement for all elements.
