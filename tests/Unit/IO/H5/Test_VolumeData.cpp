@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <hdf5.h>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -529,6 +530,32 @@ void test_extend_connectivity_data() {
     file_system::rm(h5_file_name, true);
   }
 }
+
+// template <size_t SpatialDim>
+// void test_sort_function() {
+
+//     std::vector<std::array<double, SpatialDim>> test_BLC;
+
+//     std::array<double, SpatialDim> c0 = {0,0,0};
+//     std::array<double, SpatialDim> c1 = {0,0,1};
+//     std::array<double, SpatialDim> c2 = {0,1,0};
+//     std::array<double, SpatialDim> c3 = {0,1,1};
+//     std::array<double, SpatialDim> c4 = {1,0,0};
+//     std::array<double, SpatialDim> c5 = {1,0,1};
+//     std::array<double, SpatialDim> c6 = {1,1,0};
+//     std::array<double, SpatialDim> c7 = {1,1,1};
+//     std::array<double, SpatialDim> c8 = {2,0,0};
+//     std::array<double, SpatialDim> c9 = {2,0,1};
+//     std::array<double, SpatialDim> c10 = {2,1,0};
+//     std::array<double, SpatialDim> c11 = {2,1,1};
+
+//     test_BLC.insert(test_BLC.end(),{c10,c11,c0,c1,c6,c7,c8,c9,c2,c3,c4,c5});
+//     std::cout << test_BLC << '\n';
+
+//     // h5::sort_BLC_in_element<SpatialDim>(test_BLC);
+
+//     std::cout << h5::sort_BLC_in_element<SpatialDim>(test_BLC) << '\n';
+//   }
 }  // namespace
 
 SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
@@ -538,6 +565,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   test_extend_connectivity_data<1>();
   test_extend_connectivity_data<2>();
   test_extend_connectivity_data<3>();
+  // test_sort_function<3>();
 
 #ifdef SPECTRE_DEBUG
   CHECK_THROWS_WITH(

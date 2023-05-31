@@ -256,4 +256,9 @@ Mesh<Dim> mesh_for_grid(
     const std::vector<std::vector<Spectral::Basis>>& all_bases,
     const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
 
+// template <size_t SpatialDim>
+// std::vector<std::array<double, SpatialDim>>
+// sort_BLC_in_element(std::vector<std::array<double, SpatialDim>>&
+// BLC_in_element);
+
 }  // namespace h5

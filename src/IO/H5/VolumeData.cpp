@@ -20,6 +20,7 @@
 #include <iostream>
 
 #include "DataStructures/DataVector.hpp"
+#include "DataStructures/Index.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
 // #include "Domain/LogicalCoordinates.hpp"
 #include "Domain/Structure/SegmentId.hpp"
@@ -364,7 +365,8 @@ std::pair<std::vector<std::array<int, SpatialDim>>,
           std::vector<std::array<int, SpatialDim>>>
 compute_element_refinements_and_indices(
     const std::vector<std::string>& block_grid_names) {
-  std::vector<std::array<int, SpatialDim>> h_ref_array = {};
+  std::vector<std::array<int, SpatialDim>> h_ref_array;
+  h_ref_array.reserve(block_grid_names.size);
   for (size_t i = 0; i < block_grid_names.size(); ++i) {
     std::string grid_name_string = block_grid_names[i];
     size_t h_ref_previous_start_position = 0;
@@ -382,7 +384,8 @@ compute_element_refinements_and_indices(
   }
 
   size_t grid_points_x_start_position = 0;
-  std::vector<std::array<int, SpatialDim>> indices_of_elements = {};
+  std::vector<std::array<int, SpatialDim>> indices_of_elements;
+  indices_of_elements.reserve(block_grid_names.size());
   for (size_t i = 0; i < block_grid_names.size(); ++i) {
     std::array<int, SpatialDim> indices_of_element = {};
     std::string grid_name = block_grid_names[i];
@@ -406,20 +409,21 @@ compute_element_refinements_and_indices(
   std::cout << std::pair{indices_of_elements, h_ref_array} << "\n";
   return std::pair{indices_of_elements, h_ref_array};
   // We now have the indices of each element (3 per element for each dimension)
-  // and the corresponding h_refinement for all elements.
+  // and the corresponding h_refinement for all elements in a particular block.
 }
 
 template <size_t SpatialDim>
 std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
     const std::vector<std::string>& block_grid_names) {
   std::vector<std::array<SegmentId, SpatialDim>> SegmentIds = {};
-
   std::pair<std::vector<std::array<int, SpatialDim>>,
             std::vector<std::array<int, SpatialDim>>>
       refinement_and_indices =
           compute_element_refinements_and_indices<SpatialDim>(block_grid_names);
   for (size_t i = 0; i < block_grid_names.size(); ++i) {
     for (size_t j = 0; j < SpatialDim; ++j) {
+      // Constructor for segmentid: SegmentId (size_t refinement_level, size_t
+      // index)
       SegmentId current_seg_id(refinement_and_indices[1][i][j],
                                refinement_and_indices[0][i][j]);
       // When testing, the above line may have a problem because SegmentId
@@ -441,16 +445,26 @@ std::vector<std::array<SegmentId, SpatialDim>> neighbors(
   std::vector<std::array<SegmentId, SpatialDim>> neighbors = {};
   for (size_t i = 0; i < SegmentIds.size(); ++i) {
     std::vector<bool> identification = {};
-    for (size_t j = 0; j < SegmentIds[i].size(); ++j) {
-      identification.push_back(element.overlap(SegmentIds[i][j]));
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      identification.push_back(element[j].overlaps(SegmentIds[i][j]));
     }
-    int number_of_overlaps =
-        identification[0] + identification[1] + identification[2];
-    if (number_of_overlaps == 2) {
-      neighbors.push_back(SegmentIds[i]);
-      // needs to overlap in 2 and only 2 dimensions to be a face to face
-      // neighbor
+    int number_of_overlaps = 0;
+    for (size_t k = 0; k < SpatialDim; ++k) {
+      number_of_overlaps += identification[k];
     }
+    if (number_of_overlaps == SpatialDim - 1) {
+      for (size_t j = 0; j < SpatialDim; ++j) {
+        if (element[j] == SegmentIds[i][j].endpoint()) {
+          neighbors.push_back(SegmentIds[i]);
+          // This assumes that there is at most one segment ID in each candidate
+          // element that shares endpoints with the element of interest. Should
+          // be a test that there is only 1.
+        }
+      }
+    }
+    //   // needs to overlap in 2 dimensions and touch in 1 dimension to be a
+    //   face to face
+    //   // neighbor (could also be itself)
   }
   return neighbors;
   // returns a std::vector of the neighbors of one particular input element
@@ -464,7 +478,7 @@ neighbor_refinement_filter(std::array<SegmentId, SpatialDim> neighbors,
       refined_neighbors = {};
   for (size_t i = 0; i < neighbors.size(); ++i) {
     for (size_t j = 0; j < SpatialDim; ++j) {
-      if (element[j].overlap(neighbors[i][j]) == true) {
+      if (element[j].overlaps(neighbors[i][j]) == true) {
         // This line eliminates neighbors from the list that do not have the
         // same refinement as the element of interest. This need to be written
         // much more efficiently though, as each element needs to be passes
@@ -480,7 +494,52 @@ neighbor_refinement_filter(std::array<SegmentId, SpatialDim> neighbors,
   }
   return refined_neighbors;
   // Now we have a std::vector of the neightbors that only have the same
-  // refinement as the particular element of interest
+  // refinement as the particular element of interest (may include self)
+}
+
+// template <size_t SpatialDim>
+// std::unordered_map<std::array<SegmentId, SpatialDim>,
+//                    std::array<double, SpatialDim>>
+// BlockLogical_to_SegmentId(
+//     std::vector<std::array<double, SpatialDim>> block_logical_coordinates,
+//     std::vector<std::array<SegmentId, SpatialDim>> SegmentIds,
+//     std::array<int, SpatialDim> h_ref) {
+//   for (size_t j = 0; j < block_logical_coordinates.size(); ++j) {
+//     std::array<double, SpatialDim> current_coordinate =
+//         block_logical_coordinates[j];
+//   }
+//   // Assume the std::vector is all the data from within one block. Not sure
+//   if
+//   // this is true or not tho lol. Given an array of the 3 Segment IDs of one
+//   // element, converts these segment ID's into block logical coordinates
+//   using
+//   // index voodoo
+// }
+
+template <size_t SpatialDim>
+std::vector<std::array<double, SpatialDim>> SegmentId_to_BLC_for_element(
+    std::vector<std::array<double, SpatialDim>> block_logical_coordinates,
+    std::array<SegmentId, SpatialDim> element) {
+  std::vector<std::array<double, SpatialDim>> BLC_in_element;
+  for (size_t i = 0; i < block_logical_coordinates.size(); ++i) {
+    std::array<double, SpatialDim> current_point = block_logical_coordinates[i];
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      double elem_lower = element[j].endpoint(Side::Lower);
+      double elem_upper = element[j].endpoint(Side::Upper);
+      // I think this for loop can be brough outside the first one and it'd be
+      // more efficient
+      if (block_logical_coordinates[i][j] >= elem_lower &&
+          block_logical_coordinates[i][j] <= elem_upper) {
+        continue;
+      } else {
+        break;
+      }
+    }
+    BLC_in_element.push_back(block_logical_coordinates[i]);
+  }
+  return BLC_in_element;
+  // Now we have checked all the BLC whether they fall within the range of an
+  // elements segIDs, then building the BLC of the element from that condition.
 }
 
 // Want to write a function that takes in the vector or arrays of the segmentIds
@@ -502,23 +561,64 @@ template <size_t SpatialDim>
 int neighbor_direction(std::array<SegmentId, SpatialDim> element,
                        std::array<SegmentId, SpatialDim> neighbor_element) {
   int overlap_direction = 0;
-  double elem_lower = element.endpoint(Side::Lower);
-  double neigh_upper = neighbor_element.endpoint(Side::Upper);
   for (size_t i = 0; i < SpatialDim; ++i) {
-    if (element[i].overlap(neighbor_element[i]) == true) {
+    if (element[i].overlaps(neighbor_element[i]) == true) {
       overlap_direction = i + 1;
+    } else {
+      double elem_lower = element[i].endpoint(Side::Lower);
+      double neigh_upper = neighbor_element[i].endpoint(Side::Upper);
+      if (elem_lower == neigh_upper) {
+        overlap_direction *= -1;
+      }
+      // Don't need anything in the opposite direction because it's just
+      // multiplying by +1
     }
-    if (elem_lower == neigh_upper) {
-      overlap_direction *= -1;
-    }
-    // Don't need anything in the opposite direction because it's just
-    // multiplying by +1
   }
   return overlap_direction;
   // Given an element of interest and a neighbor element (for now with the same
   // refinement), returns the direction of the overlap between the two elements,
-  // ie. which side the neighbor is on
+  // ie. which side the neighbor is on (0 is x, 1 is y,2 is z. -1 is -x, etc...)
 }
+
+template <size_t SpatialDim>
+std::vector<std::array<double, SpatialDim>> sort_BLC_in_element(
+    std::vector<std::array<double, SpatialDim>>& BLC_in_element) {
+  // std::vector<std::array<double, SpatialDim>> sorted_BLC_by_x_in_element;
+  std::sort(BLC_in_element.begin(), BLC_in_element.end(),
+            [](const auto& lhs, const auto& rhs) {
+              return std::lexicographical_compare(lhs.begin(), lhs.end(),
+                                                  rhs.begin(), rhs.end());
+            });
+
+  // I think this should probaby be written as a void function
+  return BLC_in_element;
+}
+
+template <size_t SpatialDim>
+std::vector<std::array<double, SpatialDim>> BLC_in_element(
+    std::array<SegmentId, SpatialDim> element,
+    std::vector<std::array<double, SpatialDim>> BLC) {
+  // Takes in the SegmentIds of the element of interest in the array of
+  // length 3. Also takes in all the BLC for the given block.
+  std::vector<std::array<double, SpatialDim>> BLC_for_element;
+  for (size_t i = 0; i < BLC.size(); ++i) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      if (BLC[i][j] > element[j].endpoint(Side::Lower) &&
+          BLC[i][j] < element[j].endpoint(Side::Upper)) {
+        BLC_for_element.push_back(BLC[i][j]);
+      }
+    }
+  }
+
+  return sort_BLC_in_element(BLC_for_element);
+}
+
+template <size_t SpatialDim>
+std::vector<std::array<double, SpatialDim>> BLC_in__neighbor(
+    std::array<SegmentId, SpatialDim> element,
+    std::vector<std::array<double, SpatialDim>> BLC,
+    std::vector<std::tuple<std::array<SegmentId, SpatialDim>, int>>
+        refined_neighbors) {}
 
 // template <size_t SpatialDim>
 // std::vector<std::array<double, SpatialDim>> sort_and_order_block_logical(
@@ -708,6 +808,19 @@ generate_new_connectivity(
                                                       ordered_z, block_number);
 }
 }  // namespace
+
+// template <size_t SpatialDim>
+// std::vector<std::array<double, SpatialDim>> sort_BLC_in_element(
+//     std::vector<std::array<double, SpatialDim>>& BLC_in_element) {
+//   // std::vector<std::array<double, SpatialDim>> sorted_BLC_by_x_in_element;
+//   std::sort(BLC_in_element.begin(), BLC_in_element.end(),
+//             [](const auto& lhs, const auto& rhs) {
+//               return std::lexicographical_compare(lhs.begin(), lhs.end(),
+//                                                   rhs.begin(), rhs.end());
+//             });
+
+//   return BLC_in_element;
+// }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
                        const hid_t /*location*/, const std::string& name,
@@ -1432,5 +1545,17 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
 #undef INSTANTIATE
 #undef DIM
+
+// #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+// #define INSTANTIATE(_, data)                          \
+//   template std::vector<std::array<double, DIM(data)>> \
+//       h5::sort_BLC_in_element<DIM(data)>(             \
+//           std::vector<std::array<double, DIM(data)>> & BLC_in_element);
+
+// GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+// #undef INSTANTIATE
+// #undef DIM
 
 }  // namespace h5
