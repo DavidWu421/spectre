@@ -17,8 +17,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include <iostream>
+
 #include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
+#include "Domain/Structure/SegmentId.hpp"
 #include "IO/Connectivity.hpp"
 #include "IO/H5/AccessType.hpp"
 #include "IO/H5/Header.hpp"
@@ -355,7 +358,64 @@ std::vector<std::array<double, SpatialDim>> generate_block_logical_coordinates(
     block_logical_coordinates.push_back(grid_point_coordinate);
   }
 
+  for (size_t j = 0; j < block_logical_coordinates.size(); ++j) {
+    for (size_t i = 0; i < SpatialDim; ++i) {
+      std::cout << block_logical_coordinates[j][i] << "    " << j << ", " << i
+                << '\n';
+    }
+  }
+
   return block_logical_coordinates;
+  // returns the BLC for AN element of interested specified by element logical
+  // coordinates. For the whole block, this function will run as many times as
+  // there are elements.
+}
+
+template <size_t SpatialDim>
+std::pair<std::vector<std::array<int, SpatialDim>>,
+          std::vector<std::array<int, SpatialDim>>>
+compute_element_refinements_and_indices(
+    const std::vector<std::string>& block_grid_names) {
+  std::vector<std::array<int, SpatialDim>> h_ref_array = {};
+  for (size_t i = 0; i < block_grid_names.size(); ++i) {
+    std::string grid_name_string = block_grid_names[i];
+    size_t h_ref_previous_start_position = 0;
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      size_t h_ref_start_position =
+          grid_name_string.find('L', h_ref_previous_start_position + 1);
+      size_t h_ref_end_position =
+          grid_name_string.find('I', h_ref_start_position);
+      size_t h_ref = std::stoi(grid_name_string.substr(
+          h_ref_start_position + 1,
+          h_ref_end_position - h_ref_start_position - 1));
+      h_ref_array[i][j] = h_ref;
+      h_ref_previous_start_position = h_ref_start_position;
+    }
+  }
+
+  size_t grid_points_x_start_position = 0;
+  std::vector<std::array<int, SpatialDim>> indices_of_elements = {};
+  for (size_t i = 0; i < block_grid_names.size(); ++i) {
+    std::array<int, SpatialDim> indices_of_element = {};
+    std::string grid_name = block_grid_names[i];
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      size_t grid_points_start_position =
+          grid_name.find('I', grid_points_x_start_position + 1);
+      size_t grid_points_end_position =
+          grid_name.find(',', grid_points_start_position);
+      if (j == SpatialDim) {
+        grid_points_end_position =
+            grid_name.find(')', grid_points_start_position);
+      }
+      size_t current_element_index = std::stoi(grid_name.substr(
+          grid_points_start_position + 1,
+          grid_points_end_position - grid_points_start_position - 1));
+      indices_of_element[j] = current_element_index;
+    }
+    indices_of_elements.push_back(indices_of_element);
+  }
+
+  return std::pair{indices_of_elements, h_ref_array};
 }
 
 // Sorting routine for an incoming list of values
@@ -486,6 +546,168 @@ generate_new_connectivity(
                                                       ordered_z, block_number);
 }
 }  // namespace
+
+template <size_t SpatialDim>
+std::vector<std::array<double, SpatialDim>>
+DAVID_generate_block_logical_coordinates(
+    const std::vector<std::array<double, SpatialDim>>&
+        element_logical_coordinates,
+    const std::string& grid_name,
+    const std::array<int, SpatialDim>& h_refinement_array) {
+  size_t grid_points_x_start_position = 0;
+  std::vector<std::array<double, SpatialDim>> block_logical_coordinates;
+  block_logical_coordinates.reserve(element_logical_coordinates.size());
+  std::vector<double> number_of_elements_each_direction;
+  number_of_elements_each_direction.reserve(SpatialDim);
+  std::vector<double> shift_each_direction;
+  shift_each_direction.reserve(SpatialDim);
+
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    double number_of_elements = pow(2, h_refinement_array[i]);
+    number_of_elements_each_direction.push_back(number_of_elements);
+    size_t grid_points_start_position =
+        grid_name.find('I', grid_points_x_start_position + 1);
+    size_t grid_points_end_position =
+        grid_name.find(',', grid_points_start_position);
+    if (i == SpatialDim) {
+      grid_points_end_position =
+          grid_name.find(')', grid_points_start_position);
+    }
+    int element_index = std::stoi(grid_name.substr(
+        grid_points_start_position + 1,
+        grid_points_end_position - grid_points_start_position - 1));
+    double shift = (-1 + (2 * element_index + 1) / number_of_elements);
+    shift_each_direction.push_back(shift);
+    grid_points_x_start_position = grid_points_start_position;
+  }
+
+  for (size_t i = 0; i < element_logical_coordinates.size(); ++i) {
+    std::array<double, SpatialDim> grid_point_coordinate = {};
+    for (size_t j = 0; j < grid_point_coordinate.size(); ++j) {
+      grid_point_coordinate[j] = 1 / number_of_elements_each_direction[j] *
+                                     element_logical_coordinates[i][j] +
+                                 shift_each_direction[j];
+    }
+    block_logical_coordinates.push_back(grid_point_coordinate);
+  }
+
+  for (size_t j = 0; j < block_logical_coordinates.size(); ++j) {
+    for (size_t i = 0; i < SpatialDim; ++i) {
+      std::cout << block_logical_coordinates[j][i] << "    " << j << ", " << i
+                << '\n';
+    }
+  }
+
+  return block_logical_coordinates;
+  // returns the BLC for AN element of interested specified by element logical
+  // coordinates. For the whole block, this function will run as many times as
+  // there are elements.
+}
+
+// template <size_t SpatialDim>
+// std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
+//     const std::vector<std::string>& block_grid_names) {
+//   std::vector<std::array<SegmentId, SpatialDim>> SegmentIds = {};
+//   std::pair<std::vector<std::array<int, SpatialDim>>,
+//             std::vector<std::array<int, SpatialDim>>>
+//       refinement_and_indices =
+//           compute_element_refinements_and_indices<SpatialDim>(
+  // block_grid_names);
+//   for (size_t i = 0; i < block_grid_names.size(); ++i) {
+//     for (size_t j = 0; j < SpatialDim; ++j) {
+//       // Constructor for segmentid: SegmentId (size_t refinement_level,
+//       size_t
+//       // index)
+//       SegmentId current_seg_id(refinement_and_indices[1][i][j],
+//                                refinement_and_indices[0][i][j]);
+//       // When testing, the above line may have a problem because SegmentId
+//       // constructor just takes in the size_t of the index and the
+//       refinement,
+//       // but what I actually passed in might have a SpatialDim as well, I'm
+//       not
+//       // sure, it needs testing
+//       SegmentIds.push_back(current_seg_id);
+//     }
+//   }
+//   return SegmentIds;
+//   // Now we have the segment ID's for each element (3 for each element for
+//   each
+//   // dimension)
+// }
+
+template <size_t SpatialDim>
+std::pair<std::vector<std::array<int, SpatialDim>>,
+          std::vector<std::array<int, SpatialDim>>>
+compute_element_refinements_and_indices(
+    const std::vector<std::string>& block_grid_names) {
+  // std::vector<std::array<int, SpatialDim>> indices_of_elements = {};
+
+  // size_t grid_points_x_start_position = 0;
+
+  // for (size_t i = 0; i < SpatialDim; ++i) {
+  //   size_t grid_points_start_position =
+  //       grid_name.find('I', grid_points_x_start_position + 1);
+  //   size_t grid_points_end_position =
+  //       grid_name.find(',', grid_points_start_position);
+  //   if (i == SpatialDim) {
+  //     grid_points_end_position =
+  //         grid_name.find(')', grid_points_start_position);
+  //   }
+  //   int element_index = std::stoi(grid_name.substr(
+  //       grid_points_start_position + 1,
+  //       grid_points_end_position - grid_points_start_position - 1));
+  //   double shift = (-1 + (2 * element_index + 1) / number_of_elements);
+  //   shift_each_direction.push_back(shift);
+  //   grid_points_x_start_position = grid_points_start_position;
+  // }
+
+  size_t grid_points_x_start_position = 0;
+  std::vector<std::array<int, SpatialDim>> indices_of_elements = {};
+  for (size_t i = 0; i < block_grid_names.size(); ++i) {
+    std::array<int, SpatialDim> indices_of_element = {};
+    std::string element_grid_name = block_grid_names[i];
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      size_t grid_points_start_position =
+          element_grid_name.find('I', grid_points_x_start_position + 1);
+      size_t grid_points_end_position =
+          element_grid_name.find(',', grid_points_start_position);
+      if (j == SpatialDim) {
+        grid_points_end_position =
+            element_grid_name.find(')', grid_points_start_position);
+      }
+      size_t current_element_index = std::stoi(element_grid_name.substr(
+          grid_points_start_position + 1,
+          grid_points_end_position - grid_points_start_position - 1));
+      indices_of_element[j] = current_element_index;
+      grid_points_x_start_position = grid_points_start_position;
+
+      std::cout << "Start position: " << grid_points_start_position << '\n'
+                << "End Position: " << grid_points_end_position << '\n';
+    }
+    indices_of_elements.push_back(indices_of_element);
+  }
+
+  std::vector<std::array<int, SpatialDim>> h_ref_array = {};
+  for (size_t i = 0; i < block_grid_names.size(); ++i) {
+    std::string grid_name_string = block_grid_names[i];
+    size_t h_ref_previous_start_position = 0;
+    std::array<int, SpatialDim> current_h_ref_array = {};
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      size_t h_ref_start_position =
+          grid_name_string.find('L', h_ref_previous_start_position + 1);
+      size_t h_ref_end_position =
+          grid_name_string.find('I', h_ref_start_position);
+      size_t h_ref = std::stoi(grid_name_string.substr(
+          h_ref_start_position + 1,
+          h_ref_end_position - h_ref_start_position - 1));
+      current_h_ref_array[j] = h_ref;
+      h_ref_previous_start_position = h_ref_start_position;
+    }
+    h_ref_array.push_back(current_h_ref_array);
+  }
+
+  return std::pair{indices_of_elements, h_ref_array};
+}
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
                        const hid_t /*location*/, const std::string& name,
@@ -1209,6 +1431,46 @@ Mesh<Dim> mesh_for_grid(
       const std::vector<std::vector<size_t>>& all_extents,        \
       const std::vector<std::vector<Spectral::Basis>>& all_bases, \
       const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                  \
+  template std::pair<std::vector<std::array<int, DIM(data)>>, \
+                     std::vector<std::array<int, DIM(data)>>> \
+  h5::compute_element_refinements_and_indices<DIM(data)>(     \
+      const std::vector<std::string>& block_grid_names);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+// #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+// #define INSTANTIATE(_, data)                                  \
+//   template std::vector<std::array<SegmentId, DIM(data)>> \
+//   h5::compute_segmentIds<DIM(data)> (  \
+//     const std::vector<std::string>& block_grid_names);
+
+// GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+// #undef INSTANTIATE
+// #undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                               \
+  template std::vector<std::array<double, DIM(data)>>      \
+  h5::DAVID_generate_block_logical_coordinates<DIM(data)>( \
+      const std::vector<std::array<double, DIM(data)>>&    \
+          element_logical_coordinates,                     \
+      const std::string& grid_name,                        \
+      const std::array<int, DIM(data)>& h_refinement_array);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 

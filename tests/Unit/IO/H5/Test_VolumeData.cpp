@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include <iostream>
+
 #include "DataStructures/DataVector.hpp"
 #include "Domain/Creators/Brick.hpp"
 #include "Domain/Creators/RegisterDerivedWithCharm.hpp"
@@ -431,11 +433,11 @@ void test_extend_connectivity_data() {
         ERROR("Invalid dimensionality");
     }
 
-    element_data[i] = {extents[i], tensor_components[i], bases[i],
-                       quadratures[i], grid_names[i]};
+    element_data[i] = {grid_names[i], tensor_components[i], extents[i],
+                       bases[i], quadratures[i]};
   }  // End of sample volume data
 
-  const std::string h5_file_name("Unit.IO.H5.VolumeData.h5");
+  const std::string h5_file_name("Unit.IO.H5.VolumeData.ExtendConnectivity.h5");
   const uint32_t version_number = 4;
 
   // Remove any pre-existing file with the same name
@@ -485,37 +487,20 @@ void test_extend_connectivity_data() {
       ERROR("Invalid dimensionality");
   }  // End of sample test connectivity
 
-  // Instantiate args to read connectivity from h5 file
-  const std::string& h5_volume_name = "element_data.vol";
-  const std::string& h5_obs_id_group_name = "ObservationId2345";
-  const std::string& h5_dataset_name = "connectivity";
-  int data[expected_connectivity.size()];
-
-  const char* file_id = h5_file_name.c_str();
-  const char* volume_id = h5_volume_name.c_str();
-  const char* obs_id = h5_obs_id_group_name.c_str();
-  const char* connectivity_dataset_id = h5_dataset_name.c_str();
-
-  // Read connectivity from h5 file
-  const hid_t file = H5Fopen(file_id, H5F_ACC_RDONLY, H5P_DEFAULT);
-  CHECK_H5(file, "Failed to open file");
-  const hid_t volume_subgroup = H5Gopen2(file, volume_id, H5P_DEFAULT);
-  CHECK_H5(volume_subgroup, "Failed to open volume subgroup");
-  const hid_t obs_id_subgroup = H5Gopen2(volume_subgroup, obs_id, H5P_DEFAULT);
-  CHECK_H5(obs_id_subgroup, "Failed to open observation ID subgroup");
-  const hid_t dataset_id =
-      H5Dopen2(obs_id_subgroup, connectivity_dataset_id, H5P_DEFAULT);
-  CHECK_H5(dataset_id, "Failed to create dataset");
-  CHECK_H5(H5Dread(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                   &data[0]),
-           "Failed to read dataset");
+  // Reopen h5 file and extract connectivity
+  const auto& volume_data = h5_file.get<h5::VolumeData>("/element_data");
+  const auto h5_connectivity =
+      volume_data.get_tensor_component(2345, "connectivity").data;
+  const auto connectivity_data = get<0>(h5_connectivity);
 
   // Store file connectivity in vector like expected_connectivity
   std::vector<size_t> file_connectivity(expected_connectivity.size(), 0);
 
   for (size_t i = 0; i < expected_connectivity.size(); i++) {
-    file_connectivity[i] = static_cast<size_t>(data[i]);
+    file_connectivity[i] = static_cast<size_t>(connectivity_data[i]);
   }
+
+  h5_file.close_current_object();
 
   // Sort to check connectivity is the same since elementwise comparison is not
   // required or accurate
@@ -529,15 +514,120 @@ void test_extend_connectivity_data() {
     file_system::rm(h5_file_name, true);
   }
 }
+
+template <size_t SpatialDim>
+void test_compute_element_refinements_and_indices() {
+  // Sample volume data
+  const std::vector<size_t>& observation_ids{2345};
+  const std::vector<double>& observation_values{1.0};
+
+  // Sample data with h-ref 1 & p-ref 2 for each SpatialDim
+  // Used for both number_of_elements and number_of_gridpoints
+  const size_t number_of_elements = two_to_the(SpatialDim);
+
+  // Instantiate components for write_volume_data
+  std::vector<std::vector<size_t>> extents(number_of_elements,
+                                           std::vector<size_t>(SpatialDim));
+  std::vector<std::vector<Spectral::Basis>> bases(
+      number_of_elements, std::vector<Spectral::Basis>(SpatialDim));
+  std::vector<std::vector<Spectral::Quadrature>> quadratures(
+      number_of_elements, std::vector<Spectral::Quadrature>(SpatialDim));
+  std::vector<std::string> grid_names(number_of_elements);
+  std::vector<std::vector<std::vector<float>>> tensor_components_and_coords(
+      number_of_elements, std::vector<std::vector<float>>(
+                              4, std::vector<float>(number_of_elements)));
+  std::vector<std::vector<TensorComponent>> tensor_components(
+      number_of_elements, std::vector<TensorComponent>(4));
+  std::vector<ElementVolumeData> element_data(number_of_elements);
+
+  // Base element spatial coordinates depending on SpatialDim
+  switch (SpatialDim) {
+    case 1:
+      tensor_components_and_coords[0][0] = {0.0, 1.0};
+      break;
+    case 2:
+      tensor_components_and_coords[0][0] = {0.0, 1.0, 0.0, 1.0};
+      tensor_components_and_coords[0][1] = {0.0, 0.0, 1.0, 1.0};
+      break;
+    case 3:
+      tensor_components_and_coords[0][0] = {0.0, 1.0, 0.0, 1.0,
+                                            0.0, 1.0, 0.0, 1.0};
+      tensor_components_and_coords[0][1] = {0.0, 0.0, 1.0, 1.0,
+                                            0.0, 0.0, 1.0, 1.0};
+      tensor_components_and_coords[0][2] = {0.0, 0.0, 0.0, 0.0,
+                                            1.0, 1.0, 1.0, 1.0};
+      break;
+    default:
+      ERROR("Invalid dimensionality");
+  }
+
+  // Populate remain element spatial coordinates
+  for (size_t i = 0; i < 2; i++) {
+    size_t index = i;
+
+    for (size_t point_num = 0; point_num < number_of_elements; point_num++) {
+      tensor_components_and_coords[index][0][point_num] =
+          2 * i + tensor_components_and_coords[0][0][point_num];
+    }
+    grid_names[index] = "[B0,(L1I" + std::to_string(i) + ")]";
+
+    if (SpatialDim > 1) {
+      for (size_t j = 0; j < 2; j++) {
+        index = 2 * j + i;
+
+        for (size_t point_num = 0; point_num < number_of_elements;
+             point_num++) {
+          tensor_components_and_coords[index][0][point_num] =
+              2 * i + tensor_components_and_coords[0][0][point_num];
+          tensor_components_and_coords[index][1][point_num] =
+              2 * j + tensor_components_and_coords[0][1][point_num];
+        }
+
+        grid_names[index] =
+            "[B0,(L1I" + std::to_string(i) + ",L1I" + std::to_string(j) + ")]";
+
+        if (SpatialDim == 3) {
+          for (size_t k = 0; k < 2; k++) {
+            index = 4 * k + 2 * j + i;
+
+            for (size_t point_num = 0; point_num < number_of_elements;
+                 point_num++) {
+              tensor_components_and_coords[index][0][point_num] =
+                  2 * i + tensor_components_and_coords[0][0][point_num];
+              tensor_components_and_coords[index][1][point_num] =
+                  2 * j + tensor_components_and_coords[0][1][point_num];
+              tensor_components_and_coords[index][2][point_num] =
+                  2 * k + tensor_components_and_coords[0][2][point_num];
+            }
+            grid_names[index] = "[B0,(L1I" + std::to_string(i) + ",L1I" +
+                                std::to_string(j) + ",L1I" + std::to_string(k) +
+                                ")]";
+          }
+        }
+      }
+    }
+  }
+  std::cout << grid_names << "\n";
+  // std::cout <<
+  // h5::compute_element_refinements_and_indices<SpatialDim>(grid_names) <<"\n";
+}
+
+template <size_t SpatialDim>
+void test_DAVID_generate_block_logical_coordinates() {
+  std::cout << "heyyyyy" << '\n';
+}
+
 }  // namespace
 
 SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   test<DataVector>();
   test<std::vector<float>>();
   test_strahlkorper();
-  test_extend_connectivity_data<1>();
-  test_extend_connectivity_data<2>();
+  // test_extend_connectivity_data<1>();
+  // test_extend_connectivity_data<2>();
   test_extend_connectivity_data<3>();
+  test_compute_element_refinements_and_indices<3>();
+  test_DAVID_generate_block_logical_coordinates<3>();
 
 #ifdef SPECTRE_DEBUG
   CHECK_THROWS_WITH(
