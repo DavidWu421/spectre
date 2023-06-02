@@ -552,6 +552,10 @@ std::pair<std::vector<std::array<int, SpatialDim>>,
           std::vector<std::array<int, SpatialDim>>>
 compute_element_refinements_and_indices(
     const std::vector<std::string>& block_grid_names) {
+  // Computes the refinements and indieces for all the elements in a given block
+  // when given the grid names for that particular block. This function CANNOT
+  // be given all the gridnames across the whole domain.
+
   std::vector<std::array<int, SpatialDim>> indices = {};
   size_t grid_points_previous_start_position;
   size_t grid_points_start_position;
@@ -610,6 +614,36 @@ compute_element_refinements_and_indices(
   }
 
   return std::pair{indices, h_ref};
+}
+
+template <size_t SpatialDim>
+std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
+    const std::pair<std::vector<std::array<int, SpatialDim>>,
+                    std::vector<std::array<int, SpatialDim>>>&
+        refinements_and_indices) {
+  // Creates a std::vector of the segmentIds of each element in the block that
+  // is the same block as the block for which the refinement and indices are
+  // calculated.
+  std::vector<std::array<SegmentId, SpatialDim>> segment_ids = {};
+  std::array<SegmentId, SpatialDim> segment_ids_of_current_element;
+  for (size_t i = 0; i < refinements_and_indices.first.size(); ++i) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      SegmentId current_segment_id(refinements_and_indices.second[i][j],
+                                   refinements_and_indices.first[i][j]);
+      segment_ids_of_current_element[j] = current_segment_id;
+    }
+    segment_ids.push_back(segment_ids_of_current_element);
+  }
+
+  // std::cout << "SEGID midpoints!!!" << '\n';
+
+  // for (size_t i = 0; i < refinements_and_indices.first.size(); ++i) {
+  //   for (size_t j = 0; j < SpatialDim; ++j) {
+  //     std::cout << segment_ids[i][j].midpoint() << '\n';
+  //   }
+  // }
+
+  return segment_ids;
 }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
@@ -1347,6 +1381,20 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
                      std::vector<std::array<int, DIM(data)>>> \
   h5::compute_element_refinements_and_indices<DIM(data)>(     \
       const std::vector<std::string>& block_grid_names);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                    \
+  template std::vector<std::array<SegmentId, DIM(data)>>        \
+  h5::create_SegmentIds<DIM(data)>(                             \
+      const std::pair<std::vector<std::array<int, DIM(data)>>,  \
+                      std::vector<std::array<int, DIM(data)>>>& \
+          refinements_and_indices);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 

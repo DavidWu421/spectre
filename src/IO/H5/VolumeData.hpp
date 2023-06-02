@@ -264,4 +264,10 @@ std::pair<std::vector<std::array<int, SpatialDim>>,
 compute_element_refinements_and_indices(
     const std::vector<std::string>& block_grid_names);
 
+template <size_t SpatialDim>
+std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
+    const std::pair<std::vector<std::array<int, SpatialDim>>,
+                    std::vector<std::array<int, SpatialDim>>>&
+        refinements_and_indices);
+
 }  // namespace h5

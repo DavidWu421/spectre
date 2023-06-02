@@ -516,7 +516,7 @@ void test_extend_connectivity_data() {
 }
 
 template <size_t SpatialDim>
-void test_compute_element_refinements_and_indices() {
+void test_compute_element_refinements_and_indices_and_SegIds() {
   // Sample volume data
   const std::vector<size_t>& observation_ids{2345};
   const std::vector<double>& observation_values{1.0};
@@ -608,18 +608,25 @@ void test_compute_element_refinements_and_indices() {
     }
   }
   std::cout << grid_names << "\n";
+  // std::vector<std::string> test_grid_names{
+  //     "[B0,(L10I12,L3I34,L5I56)]",     "[B0,(L1I90,L1I135,L1I65)]",
+  //     "[B0,(L1I078,L19I391,L41I900)]", "[B0,(L1I1,L1I1,L1I0)]",
+  //     "[B0,(L1I0,L1I0,L1I1)]",         "[B0,(L1I1,L1I0,L1I1)]",
+  //     "[B0,(L1I0,L1I1,L1I1)]",         "[B0,(L1I1,L3241I112,L13I91)]"};
+
   std::vector<std::string> test_grid_names{
-      "[B0,(L10I12,L3I34,L5I56)]",     "[B0,(L1I90,L1I135,L1I65)]",
-      "[B0,(L1I078,L19I391,L41I900)]", "[B0,(L1I1,L1I1,L1I0)]",
-      "[B0,(L1I0,L1I0,L1I1)]",         "[B0,(L1I1,L1I0,L1I1)]",
-      "[B0,(L1I0,L1I1,L1I1)]",         "[B0,(L1I1,L3241I112,L13I91)]"};
+      "[B0,(L2I0,L2I0,L2I0)]", "[B0,(L2I1,L2I0,L2I0)]", "[B0,(L2I0,L2I1,L2I0)]",
+      "[B0,(L2I1,L2I1,L2I0)]", "[B0,(L2I0,L2I0,L2I1)]", "[B0,(L2I1,L2I0,L2I1)]",
+      "[B0,(L2I0,L2I1,L2I1)]", "[B0,(L2I1,L2I1,L2I1)]"};
 
-  h5::compute_element_refinements_and_indices<SpatialDim>(test_grid_names);
-}
+  h5::compute_element_refinements_and_indices<SpatialDim>(grid_names);
+  std::pair<std::vector<std::array<int, SpatialDim>>,
+            std::vector<std::array<int, SpatialDim>>>
+      refinement_and_indices =
+          h5::compute_element_refinements_and_indices<SpatialDim>(
+              test_grid_names);
 
-template <size_t SpatialDim>
-void test_DAVID_generate_block_logical_coordinates() {
-  std::cout << "heyyyyy" << '\n';
+  h5::create_SegmentIds<SpatialDim>(refinement_and_indices);
 }
 
 }  // namespace
@@ -631,7 +638,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   // test_extend_connectivity_data<1>();
   // test_extend_connectivity_data<2>();
   // test_extend_connectivity_data<3>();
-  test_compute_element_refinements_and_indices<3>();
+  test_compute_element_refinements_and_indices_and_SegIds<3>();
 
 #ifdef SPECTRE_DEBUG
   CHECK_THROWS_WITH(
