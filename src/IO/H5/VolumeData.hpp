@@ -264,16 +264,4 @@ std::pair<std::vector<std::array<int, SpatialDim>>,
 compute_element_refinements_and_indices(
     const std::vector<std::string>& block_grid_names);
 
-template <size_t SpatialDim>
-std::vector<std::array<double, SpatialDim>>
-DAVID_generate_block_logical_coordinates(
-    const std::vector<std::array<double, SpatialDim>>&
-        element_logical_coordinates,
-    const std::string& grid_name,
-    const std::array<int, SpatialDim>& h_refinement_array);
-
-// template <size_t SpatialDim>
-// std::vector<std::array<SegmentId, SpatialDim>> compute_segmentIds(
-//     const std::vector<std::string>& block_grid_names);
-
 }  // namespace h5

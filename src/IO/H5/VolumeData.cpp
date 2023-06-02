@@ -552,84 +552,64 @@ std::pair<std::vector<std::array<int, SpatialDim>>,
           std::vector<std::array<int, SpatialDim>>>
 compute_element_refinements_and_indices(
     const std::vector<std::string>& block_grid_names) {
-  std::vector<std::array<int, SpatialDim>> indices_of_elements = {};
-  size_t grid_points_initial_start_position;
+  std::vector<std::array<int, SpatialDim>> indices = {};
+  size_t grid_points_previous_start_position;
   size_t grid_points_start_position;
   size_t grid_points_end_position;
   for (size_t i = 0; i < block_grid_names.size(); ++i) {
     std::array<int, SpatialDim> indices_of_element = {};
     std::string element_grid_name = block_grid_names[i];
-    grid_points_initial_start_position = 0;
+    grid_points_previous_start_position = 0;
     for (size_t j = 0; j < SpatialDim; ++j) {
       grid_points_start_position =
-          element_grid_name.find('I', grid_points_initial_start_position + 1);
+          element_grid_name.find('I', grid_points_previous_start_position + 1);
       if (j == SpatialDim - 1) {
         grid_points_end_position =
             element_grid_name.find(')', grid_points_start_position);
-
-        // std::cout << "Start position: " << grid_points_start_position << '\n'
-        //           << "End Position: " << grid_points_end_position << '\n';
-
-        // std::cout << element_grid_name.substr(grid_points_start_position + 1,
-        //                                       grid_points_end_position -
-        //                                           grid_points_start_position
-        //                                           - 1)
-        //           << '\n';
-
       } else {
         grid_points_end_position =
             element_grid_name.find(',', grid_points_start_position);
-
-        // std::cout << "Start position: " << grid_points_start_position << '\n'
-        //           << "End Position: " << grid_points_end_position << '\n';
-
-        // std::cout << element_grid_name.substr(grid_points_start_position + 1,
-        //                                       grid_points_end_position -
-        //                                           grid_points_start_position
-        //                                           - 1)
-        //           << '\n';
       }
 
-      size_t current_element_index = std::stoi(element_grid_name.substr(
+      int current_element_index = std::stoi(element_grid_name.substr(
           grid_points_start_position + 1,
           grid_points_end_position - grid_points_start_position - 1));
 
-      // std::cout << current_element_index << '\n';
-
       indices_of_element[j] = current_element_index;
-      grid_points_initial_start_position = grid_points_start_position;
+      grid_points_previous_start_position = grid_points_start_position;
     }
-    std::cout << indices_of_element[0] << indices_of_element[1]
-              << indices_of_element[2] << '\n';
 
-    indices_of_elements.push_back(indices_of_element);
+    // std::cout << indices_of_element[0] << indices_of_element[1]
+    //           << indices_of_element[2] << '\n';
+
+    indices.push_back(indices_of_element);
   }
 
-  std::vector<std::array<int, SpatialDim>> h_ref_array = {};
+  std::vector<std::array<int, SpatialDim>> h_ref = {};
   size_t h_ref_previous_start_position;
   size_t h_ref_start_position;
   size_t h_ref_end_position;
   for (size_t i = 0; i < block_grid_names.size(); ++i) {
-    std::array<int, SpatialDim> current_h_ref_array = {};
+    std::array<int, SpatialDim> h_ref_of_element = {};
     std::string element_grid_name = block_grid_names[i];
-    size_t h_ref_previous_start_position = 0;
+    h_ref_previous_start_position = 0;
     for (size_t j = 0; j < SpatialDim; ++j) {
-      size_t h_ref_start_position =
+      h_ref_start_position =
           element_grid_name.find('L', h_ref_previous_start_position + 1);
-      size_t h_ref_end_position =
-          element_grid_name.find('I', h_ref_start_position);
-      size_t h_ref = std::stoi(element_grid_name.substr(
+      h_ref_end_position = element_grid_name.find('I', h_ref_start_position);
+      int current_element_h_ref = std::stoi(element_grid_name.substr(
           h_ref_start_position + 1,
           h_ref_end_position - h_ref_start_position - 1));
-      current_h_ref_array[j] = h_ref;
+      h_ref_of_element[j] = current_element_h_ref;
       h_ref_previous_start_position = h_ref_start_position;
     }
-    h_ref_array.push_back(current_h_ref_array);
-    std::cout << current_h_ref_array[0] << current_h_ref_array[1]
-              << current_h_ref_array[2] << '\n';
+    h_ref.push_back(h_ref_of_element);
+
+    // std::cout << h_ref_of_element[0] << h_ref_of_element[1]
+    //           << h_ref_of_element[2] << '\n';
   }
 
-  return std::pair{indices_of_elements, h_ref_array};
+  return std::pair{indices, h_ref};
 }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
