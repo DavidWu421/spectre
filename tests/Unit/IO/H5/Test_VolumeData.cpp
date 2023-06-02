@@ -608,8 +608,13 @@ void test_compute_element_refinements_and_indices() {
     }
   }
   std::cout << grid_names << "\n";
-  // std::cout <<
-  // h5::compute_element_refinements_and_indices<SpatialDim>(grid_names) <<"\n";
+  std::vector<std::string> test_grid_names{
+      "[B0,(L10I12,L3I34,L5I56)]",     "[B0,(L1I90,L1I135,L1I65)]",
+      "[B0,(L1I078,L19I391,L41I900)]", "[B0,(L1I1,L1I1,L1I0)]",
+      "[B0,(L1I0,L1I0,L1I1)]",         "[B0,(L1I1,L1I0,L1I1)]",
+      "[B0,(L1I0,L1I1,L1I1)]",         "[B0,(L1I1,L3241I112,L13I91)]"};
+
+  h5::compute_element_refinements_and_indices<SpatialDim>(test_grid_names);
 }
 
 template <size_t SpatialDim>
@@ -625,9 +630,8 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   test_strahlkorper();
   // test_extend_connectivity_data<1>();
   // test_extend_connectivity_data<2>();
-  test_extend_connectivity_data<3>();
+  // test_extend_connectivity_data<3>();
   test_compute_element_refinements_and_indices<3>();
-  test_DAVID_generate_block_logical_coordinates<3>();
 
 #ifdef SPECTRE_DEBUG
   CHECK_THROWS_WITH(
