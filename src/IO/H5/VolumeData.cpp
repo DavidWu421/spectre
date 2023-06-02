@@ -548,20 +548,20 @@ generate_new_connectivity(
 }  // namespace
 
 template <size_t SpatialDim>
-std::pair<std::vector<std::array<int, SpatialDim>>,
-          std::vector<std::array<int, SpatialDim>>>
+std::pair<std::vector<std::array<size_t, SpatialDim>>,
+          std::vector<std::array<size_t, SpatialDim>>>
 compute_element_refinements_and_indices(
     const std::vector<std::string>& block_grid_names) {
   // Computes the refinements and indieces for all the elements in a given block
   // when given the grid names for that particular block. This function CANNOT
   // be given all the gridnames across the whole domain.
 
-  std::vector<std::array<int, SpatialDim>> indices = {};
+  std::vector<std::array<size_t, SpatialDim>> indices = {};
   size_t grid_points_previous_start_position;
   size_t grid_points_start_position;
   size_t grid_points_end_position;
   for (size_t i = 0; i < block_grid_names.size(); ++i) {
-    std::array<int, SpatialDim> indices_of_element = {};
+    std::array<size_t, SpatialDim> indices_of_element = {};
     std::string element_grid_name = block_grid_names[i];
     grid_points_previous_start_position = 0;
     for (size_t j = 0; j < SpatialDim; ++j) {
@@ -575,42 +575,45 @@ compute_element_refinements_and_indices(
             element_grid_name.find(',', grid_points_start_position);
       }
 
-      int current_element_index = std::stoi(element_grid_name.substr(
+      std::stringstream element_index_substring(element_grid_name.substr(
           grid_points_start_position + 1,
           grid_points_end_position - grid_points_start_position - 1));
-
+      size_t current_element_index;
+      element_index_substring >> current_element_index;
       indices_of_element[j] = current_element_index;
       grid_points_previous_start_position = grid_points_start_position;
     }
 
-    // std::cout << indices_of_element[0] << indices_of_element[1]
-    //           << indices_of_element[2] << '\n';
+    std::cout << indices_of_element[0] << indices_of_element[1]
+              << indices_of_element[2] << '\n';
 
     indices.push_back(indices_of_element);
   }
 
-  std::vector<std::array<int, SpatialDim>> h_ref = {};
+  std::vector<std::array<size_t, SpatialDim>> h_ref = {};
   size_t h_ref_previous_start_position;
   size_t h_ref_start_position;
   size_t h_ref_end_position;
   for (size_t i = 0; i < block_grid_names.size(); ++i) {
-    std::array<int, SpatialDim> h_ref_of_element = {};
+    std::array<size_t, SpatialDim> h_ref_of_element = {};
     std::string element_grid_name = block_grid_names[i];
     h_ref_previous_start_position = 0;
     for (size_t j = 0; j < SpatialDim; ++j) {
       h_ref_start_position =
           element_grid_name.find('L', h_ref_previous_start_position + 1);
       h_ref_end_position = element_grid_name.find('I', h_ref_start_position);
-      int current_element_h_ref = std::stoi(element_grid_name.substr(
+      std::stringstream element_grid_name_substring(element_grid_name.substr(
           h_ref_start_position + 1,
           h_ref_end_position - h_ref_start_position - 1));
+      size_t current_element_h_ref;
+      element_grid_name_substring >> current_element_h_ref;
       h_ref_of_element[j] = current_element_h_ref;
       h_ref_previous_start_position = h_ref_start_position;
     }
     h_ref.push_back(h_ref_of_element);
 
-    // std::cout << h_ref_of_element[0] << h_ref_of_element[1]
-    //           << h_ref_of_element[2] << '\n';
+    std::cout << h_ref_of_element[0] << h_ref_of_element[1]
+              << h_ref_of_element[2] << '\n';
   }
 
   return std::pair{indices, h_ref};
@@ -618,8 +621,8 @@ compute_element_refinements_and_indices(
 
 template <size_t SpatialDim>
 std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
-    const std::pair<std::vector<std::array<int, SpatialDim>>,
-                    std::vector<std::array<int, SpatialDim>>>&
+    const std::pair<std::vector<std::array<size_t, SpatialDim>>,
+                    std::vector<std::array<size_t, SpatialDim>>>&
         refinements_and_indices) {
   // Creates a std::vector of the segmentIds of each element in the block that
   // is the same block as the block for which the refinement and indices are
@@ -635,13 +638,13 @@ std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
     segment_ids.push_back(segment_ids_of_current_element);
   }
 
-  // std::cout << "SEGID midpoints!!!" << '\n';
+  std::cout << "SEGID midpoints!!!" << '\n';
 
-  // for (size_t i = 0; i < refinements_and_indices.first.size(); ++i) {
-  //   for (size_t j = 0; j < SpatialDim; ++j) {
-  //     std::cout << segment_ids[i][j].midpoint() << '\n';
-  //   }
-  // }
+  for (size_t i = 0; i < refinements_and_indices.first.size(); ++i) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      std::cout << segment_ids[i][j].midpoint() << '\n';
+    }
+  }
 
   return segment_ids;
 }
@@ -1376,10 +1379,10 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
 #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 
-#define INSTANTIATE(_, data)                                  \
-  template std::pair<std::vector<std::array<int, DIM(data)>>, \
-                     std::vector<std::array<int, DIM(data)>>> \
-  h5::compute_element_refinements_and_indices<DIM(data)>(     \
+#define INSTANTIATE(_, data)                                     \
+  template std::pair<std::vector<std::array<size_t, DIM(data)>>, \
+                     std::vector<std::array<size_t, DIM(data)>>> \
+  h5::compute_element_refinements_and_indices<DIM(data)>(        \
       const std::vector<std::string>& block_grid_names);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
@@ -1389,11 +1392,11 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
 #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 
-#define INSTANTIATE(_, data)                                    \
-  template std::vector<std::array<SegmentId, DIM(data)>>        \
-  h5::create_SegmentIds<DIM(data)>(                             \
-      const std::pair<std::vector<std::array<int, DIM(data)>>,  \
-                      std::vector<std::array<int, DIM(data)>>>& \
+#define INSTANTIATE(_, data)                                       \
+  template std::vector<std::array<SegmentId, DIM(data)>>           \
+  h5::create_SegmentIds<DIM(data)>(                                \
+      const std::pair<std::vector<std::array<size_t, DIM(data)>>,  \
+                      std::vector<std::array<size_t, DIM(data)>>>& \
           refinements_and_indices);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))

@@ -619,9 +619,9 @@ void test_compute_element_refinements_and_indices_and_SegIds() {
       "[B0,(L2I1,L2I1,L2I0)]", "[B0,(L2I0,L2I0,L2I1)]", "[B0,(L2I1,L2I0,L2I1)]",
       "[B0,(L2I0,L2I1,L2I1)]", "[B0,(L2I1,L2I1,L2I1)]"};
 
-  h5::compute_element_refinements_and_indices<SpatialDim>(grid_names);
-  std::pair<std::vector<std::array<int, SpatialDim>>,
-            std::vector<std::array<int, SpatialDim>>>
+  // h5::compute_element_refinements_and_indices<SpatialDim>(grid_names);
+  std::pair<std::vector<std::array<size_t, SpatialDim>>,
+            std::vector<std::array<size_t, SpatialDim>>>
       refinement_and_indices =
           h5::compute_element_refinements_and_indices<SpatialDim>(
               test_grid_names);
