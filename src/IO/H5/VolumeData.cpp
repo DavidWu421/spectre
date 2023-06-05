@@ -358,12 +358,13 @@ std::vector<std::array<double, SpatialDim>> generate_block_logical_coordinates(
     block_logical_coordinates.push_back(grid_point_coordinate);
   }
 
-  for (size_t j = 0; j < block_logical_coordinates.size(); ++j) {
-    for (size_t i = 0; i < SpatialDim; ++i) {
-      std::cout << block_logical_coordinates[j][i] << "    " << j << ", " << i
-                << '\n';
-    }
-  }
+  // for (size_t j = 0; j < block_logical_coordinates.size(); ++j) {
+  //   for (size_t i = 0; i < SpatialDim; ++i) {
+  //     std::cout << block_logical_coordinates[j][i] << "    " << j << ", " <<
+  //     i
+  //               << '\n';
+  //   }
+  // }
 
   return block_logical_coordinates;
   // returns the BLC for AN element of interested specified by element logical
@@ -584,8 +585,8 @@ compute_element_refinements_and_indices(
       grid_points_previous_start_position = grid_points_start_position;
     }
 
-    std::cout << indices_of_element[0] << indices_of_element[1]
-              << indices_of_element[2] << '\n';
+    // std::cout << indices_of_element[0] << indices_of_element[1]
+    //           << indices_of_element[2] << '\n';
 
     indices.push_back(indices_of_element);
   }
@@ -612,8 +613,8 @@ compute_element_refinements_and_indices(
     }
     h_ref.push_back(h_ref_of_element);
 
-    std::cout << h_ref_of_element[0] << h_ref_of_element[1]
-              << h_ref_of_element[2] << '\n';
+    // std::cout << h_ref_of_element[0] << h_ref_of_element[1]
+    //           << h_ref_of_element[2] << '\n';
   }
 
   return std::pair{indices, h_ref};
@@ -638,15 +639,42 @@ std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
     segment_ids.push_back(segment_ids_of_current_element);
   }
 
-  std::cout << "SEGID midpoints!!!" << '\n';
+  // std::cout << "SEGID midpoints!!!" << '\n';
 
-  for (size_t i = 0; i < refinements_and_indices.first.size(); ++i) {
-    for (size_t j = 0; j < SpatialDim; ++j) {
-      std::cout << segment_ids[i][j].midpoint() << '\n';
-    }
-  }
+  // for (size_t i = 0; i < refinements_and_indices.first.size(); ++i) {
+  //   for (size_t j = 0; j < SpatialDim; ++j) {
+  //     std::cout << segment_ids[i][j].midpoint() << '\n';
+  //   }
+  // }
 
   return segment_ids;
+}
+
+template <size_t SpatialDim>
+std::vector<Mesh<SpatialDim>> compute_element_meshes(
+    const std::vector<std::vector<Spectral::Basis>>& block_bases,
+    const std::vector<std::vector<size_t>>& block_extents,
+    const std::vector<std::vector<Spectral::Quadrature>>& block_quadratures) {
+  std::vector<Mesh<SpatialDim>> element_meshes = {};
+
+  std::array<Spectral::Basis, SpatialDim> block_bases_array;
+  std::array<Spectral::Quadrature, SpatialDim> block_quadratures_array;
+  std::array<size_t, SpatialDim> block_extents_array;
+
+  for (size_t i = 0; i < block_bases.size(); ++i) {
+    for (size_t j = 0; j < SpatialDim; j++) {
+      block_bases_array[j] = block_bases[i][j];
+      block_quadratures_array[j] = block_quadratures[i][j];
+      block_extents_array[j] = block_extents[i][j];
+    }
+    Mesh<SpatialDim> mesh_for_element{block_extents_array, block_bases_array,
+                                      block_quadratures_array};
+    element_meshes.push_back(mesh_for_element);
+
+    std::cout << mesh_for_element.number_of_grid_points() << '\n';
+  }
+
+  return element_meshes;
 }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
@@ -1398,6 +1426,20 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
       const std::pair<std::vector<std::array<size_t, DIM(data)>>,  \
                       std::vector<std::array<size_t, DIM(data)>>>& \
           refinements_and_indices);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                                   \
+  template std::vector<Mesh<DIM(data)>> h5::compute_element_meshes<DIM(data)>( \
+      const std::vector<std::vector<Spectral::Basis>>& block_bases,            \
+      const std::vector<std::vector<size_t>>& block_extents,                   \
+      const std::vector<std::vector<Spectral::Quadrature>>&                    \
+          block_quadratures);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 

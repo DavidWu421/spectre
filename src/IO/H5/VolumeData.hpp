@@ -270,4 +270,10 @@ std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
                     std::vector<std::array<size_t, SpatialDim>>>&
         refinements_and_indices);
 
+template <size_t SpatialDim>
+std::vector<Mesh<SpatialDim>> compute_element_meshes(
+    const std::vector<std::vector<Spectral::Basis>>& block_bases,
+    const std::vector<std::vector<size_t>>& block_extents,
+    const std::vector<std::vector<Spectral::Quadrature>>& block_quadratures);
+
 }  // namespace h5

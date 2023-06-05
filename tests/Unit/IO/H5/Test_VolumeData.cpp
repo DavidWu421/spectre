@@ -516,7 +516,7 @@ void test_extend_connectivity_data() {
 }
 
 template <size_t SpatialDim>
-void test_compute_element_refinements_and_indices_and_SegIds() {
+void test_compute_element_refinements_and_indices_and_SegIds_and_elem_mesh() {
   // Sample volume data
   const std::vector<size_t>& observation_ids{2345};
   const std::vector<double>& observation_values{1.0};
@@ -607,6 +607,50 @@ void test_compute_element_refinements_and_indices_and_SegIds() {
       }
     }
   }
+
+  // Populate remaining components required for writing
+  for (size_t i = 0; i < number_of_elements; i++) {
+    for (size_t j = 0; j < SpatialDim; j++) {
+      extents[i][j] = 2;
+      bases[i][j] = Spectral::Basis::Legendre;
+      quadratures[i][j] = Spectral::Quadrature::Gauss;
+    }
+    for (size_t point_num = 0; point_num < number_of_elements; point_num++) {
+      tensor_components_and_coords[i][SpatialDim][point_num] =
+          two_to_the(i + 1) + two_to_the(point_num);
+    }
+  }
+
+  // Create TensorComponent and ElementVolumeData vector depending on SpatialDim
+  for (size_t i = 0; i < number_of_elements; i++) {
+    switch (SpatialDim) {
+      case 1:
+        tensor_components[i] = {
+            {"InertialCoordinates_x", tensor_components_and_coords[i][0]},
+            {"TestScalar", tensor_components_and_coords[i][1]}};
+        break;
+      case 2:
+        tensor_components[i] = {
+            {"InertialCoordinates_x", tensor_components_and_coords[i][0]},
+            {"InertialCoordinates_y", tensor_components_and_coords[i][1]},
+            {"TestScalar", tensor_components_and_coords[i][2]}};
+        break;
+      case 3:
+        tensor_components[i] = {
+            {"InertialCoordinates_x", tensor_components_and_coords[i][0]},
+            {"InertialCoordinates_y", tensor_components_and_coords[i][1]},
+            {"InertialCoordinates_z", tensor_components_and_coords[i][2]},
+            {"TestScalar", tensor_components_and_coords[i][3]}};
+        break;
+      default:
+        ERROR("Invalid dimensionality");
+    }
+
+    element_data[i] = {grid_names[i], tensor_components[i], extents[i],
+                       bases[i], quadratures[i]};
+  }
+
+  std::cout << extents << "\n";
   std::cout << grid_names << "\n";
   // std::vector<std::string> test_grid_names{
   //     "[B0,(L10I12,L3I34,L5I56)]",     "[B0,(L1I90,L1I135,L1I65)]",
@@ -627,6 +671,7 @@ void test_compute_element_refinements_and_indices_and_SegIds() {
               test_grid_names);
 
   h5::create_SegmentIds<SpatialDim>(refinement_and_indices);
+  h5::compute_element_meshes<SpatialDim>(bases, extents, quadratures);
 }
 
 }  // namespace
@@ -638,7 +683,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   // test_extend_connectivity_data<1>();
   // test_extend_connectivity_data<2>();
   // test_extend_connectivity_data<3>();
-  test_compute_element_refinements_and_indices_and_SegIds<3>();
+  test_compute_element_refinements_and_indices_and_SegIds_and_elem_mesh<3>();
 
 #ifdef SPECTRE_DEBUG
   CHECK_THROWS_WITH(
