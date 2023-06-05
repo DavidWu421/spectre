@@ -655,6 +655,7 @@ std::vector<Mesh<SpatialDim>> compute_element_meshes(
     const std::vector<std::vector<Spectral::Basis>>& block_bases,
     const std::vector<std::vector<size_t>>& block_extents,
     const std::vector<std::vector<Spectral::Quadrature>>& block_quadratures) {
+  // COMPUTES THE ELEMENT MESHES FOR ALL ELEMENTS WITHIN THE BLOCK
   std::vector<Mesh<SpatialDim>> element_meshes = {};
 
   std::array<Spectral::Basis, SpatialDim> block_bases_array;
@@ -675,6 +676,40 @@ std::vector<Mesh<SpatialDim>> compute_element_meshes(
   }
 
   return element_meshes;
+}
+
+template <size_t SpatialDim>
+std::vector<std::vector<std::array<double, SpatialDim>>>
+compute_element_logical_coordinates(
+    const std::vector<Mesh<SpatialDim>>& element_meshes) {
+  // ONLY COMPUTES THE ELCS ALL ELEMENTS IN THE BLOCK
+
+  std::cout << "ELCS!" << '\n';
+  std::vector<std::vector<std::array<double, SpatialDim>>>
+      block_element_logical_coordinates = {};
+  std::array<double, SpatialDim> grid_point_coordinates;
+
+  for (size_t i = 0; i < element_meshes.size(); ++i) {
+    std::vector<std::array<double, SpatialDim>> element_logical_coordinates =
+        {};
+    auto element_logical_coordinates_tensor =
+        logical_coordinates(element_meshes[i]);
+    for (size_t j = 0; j < element_logical_coordinates_tensor.get(0).size();
+         ++j) {
+      for (size_t k = 0; k < SpatialDim; ++k) {
+        grid_point_coordinates[k] =
+            element_logical_coordinates_tensor.get(k)[j];
+      }
+      std::cout << grid_point_coordinates[0] << ', '
+                << grid_point_coordinates[1] << ', '
+                << grid_point_coordinates[2] << '\n';
+      element_logical_coordinates.push_back(grid_point_coordinates);
+    }
+    block_element_logical_coordinates.push_back(element_logical_coordinates);
+    std::cout << "NEW ELEMENT: " << '\n';
+  }
+
+  return block_element_logical_coordinates;
 }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
@@ -1440,6 +1475,18 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
       const std::vector<std::vector<size_t>>& block_extents,                   \
       const std::vector<std::vector<Spectral::Quadrature>>&                    \
           block_quadratures);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                       \
+  template std::vector<std::vector<std::array<double, DIM(data)>>> \
+  h5::compute_element_logical_coordinates<DIM(data)>(              \
+      const std::vector<Mesh<DIM(data)>>& element_meshes);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 

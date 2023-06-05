@@ -516,7 +516,7 @@ void test_extend_connectivity_data() {
 }
 
 template <size_t SpatialDim>
-void test_compute_element_refinements_and_indices_and_SegIds_and_elem_mesh() {
+void test_compute_element_refinements_and_indices_and_etc_and_ELCs() {
   // Sample volume data
   const std::vector<size_t>& observation_ids{2345};
   const std::vector<double>& observation_values{1.0};
@@ -659,9 +659,9 @@ void test_compute_element_refinements_and_indices_and_SegIds_and_elem_mesh() {
   //     "[B0,(L1I0,L1I1,L1I1)]",         "[B0,(L1I1,L3241I112,L13I91)]"};
 
   std::vector<std::string> test_grid_names{
-      "[B0,(L2I0,L2I0,L2I0)]", "[B0,(L2I1,L2I0,L2I0)]", "[B0,(L2I0,L2I1,L2I0)]",
-      "[B0,(L2I1,L2I1,L2I0)]", "[B0,(L2I0,L2I0,L2I1)]", "[B0,(L2I1,L2I0,L2I1)]",
-      "[B0,(L2I0,L2I1,L2I1)]", "[B0,(L2I1,L2I1,L2I1)]"};
+      "[B0,(L1I0,L1I0,L1I0)]", "[B0,(L1I1,L1I0,L1I0)]", "[B0,(L1I0,L1I1,L1I0)]",
+      "[B0,(L1I1,L1I1,L1I0)]", "[B0,(L1I0,L1I0,L1I1)]", "[B0,(L1I1,L1I0,L1I1)]",
+      "[B0,(L1I0,L1I1,L1I1)]", "[B0,(L1I1,L1I1,L1I1)]"};
 
   // h5::compute_element_refinements_and_indices<SpatialDim>(grid_names);
   std::pair<std::vector<std::array<size_t, SpatialDim>>,
@@ -671,7 +671,10 @@ void test_compute_element_refinements_and_indices_and_SegIds_and_elem_mesh() {
               test_grid_names);
 
   h5::create_SegmentIds<SpatialDim>(refinement_and_indices);
-  h5::compute_element_meshes<SpatialDim>(bases, extents, quadratures);
+  // h5::compute_element_meshes<SpatialDim>(bases, extents, quadratures);
+
+  h5::compute_element_logical_coordinates<SpatialDim>(
+      h5::compute_element_meshes<SpatialDim>(bases, extents, quadratures));
 }
 
 }  // namespace
@@ -683,7 +686,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   // test_extend_connectivity_data<1>();
   // test_extend_connectivity_data<2>();
   // test_extend_connectivity_data<3>();
-  test_compute_element_refinements_and_indices_and_SegIds_and_elem_mesh<3>();
+  test_compute_element_refinements_and_indices_and_etc_and_ELCs<3>();
 
 #ifdef SPECTRE_DEBUG
   CHECK_THROWS_WITH(

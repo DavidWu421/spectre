@@ -276,4 +276,9 @@ std::vector<Mesh<SpatialDim>> compute_element_meshes(
     const std::vector<std::vector<size_t>>& block_extents,
     const std::vector<std::vector<Spectral::Quadrature>>& block_quadratures);
 
+template <size_t SpatialDim>
+std::vector<std::vector<std::array<double, SpatialDim>>>
+compute_element_logical_coordinates(
+    const std::vector<Mesh<SpatialDim>>& element_meshes);
+
 }  // namespace h5
