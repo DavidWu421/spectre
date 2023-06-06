@@ -714,7 +714,8 @@ compute_element_logical_coordinates(
 
 bool share_endpoints(const SegmentId& segment_id_1,
                      const SegmentId& segment_id_2) {
-  bool overlaps = false;
+  // returns true if touches
+  bool touches = false;
   double upper_1 = segment_id_1.endpoint(Side::Upper);
   double lower_1 = segment_id_1.endpoint(Side::Lower);
   double upper_2 = segment_id_2.endpoint(Side::Upper);
@@ -722,34 +723,51 @@ bool share_endpoints(const SegmentId& segment_id_1,
 
   if (upper_1 == upper_2 || upper_1 == lower_2 || lower_1 == upper_2 ||
       lower_1 == lower_2) {
-    overlaps = true;
+    touches = true;
   }
 
-  return overlaps;
+  return touches;
 }
 
 template <size_t SpatialDim>
-std::vector<std::array<SegmentId, SpatialDim>> identify_neighbors(
+std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
     std::vector<std::array<SegmentId, SpatialDim>>& elements_in_block) {
+  // identifies all neighbors(face to face, edge, and corner)
   std::cout << "NEIGHBORS!" << '\n';
-  std::vector<std::array<SegmentId, SpatialDim>> neighbors = {};
 
-  for (size_t i = 0; i < SpatialDim; ++i) {
-    SegmentId current_segment_id = element_of_interest[i];
-    for (size_t j = 0; j < elements_in_block.size(); ++j) {
-      SegmentId segment_id_to_compare = elements_in_block[j][i];
-      bool overlaps = current_segment_id.overlaps(segment_id_to_compare);
-      bool endpoint = false;
-      share_endpoints(current_segment_id, segment_id_to_compare);
-      // if (current_segment_id.endpoint(Side::))
-      // if ( = false && ){
-
-      // }
+  // remove the element_of_interest from the list of neighbors
+  for (size_t i = 0; i < elements_in_block.size(); ++i) {
+    if (element_of_interest == elements_in_block[i]) {
+      auto it = std::next(elements_in_block.begin(), static_cast<int>(i));
+      elements_in_block.erase(it);
+      break;
     }
   }
 
-  return neighbors;
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    SegmentId current_segment_id = element_of_interest[i];
+    std::cout << "size: " << elements_in_block.size() << '\n';
+    // lambda identifies the idicies of the non neighbors in not_neighbors
+    auto not_neighbors = std::remove_if(
+        elements_in_block.begin(), elements_in_block.end(),
+        [&i, &current_segment_id](
+            std::array<SegmentId, SpatialDim> element_to_compare) {
+          bool overlaps = current_segment_id.overlaps(element_to_compare[i]);
+          bool touches =
+              share_endpoints(current_segment_id, element_to_compare[i]);
+          if (overlaps == true || touches == true) {
+            return false;
+          } else {
+            return true;
+          }
+        });
+    // removes all std::array<SegmentId, SpatialDim> that aren't neighbors
+    elements_in_block.erase(not_neighbors, elements_in_block.end());
+  }
+
+  std::cout << "size: " << elements_in_block.size() << '\n';
+  return elements_in_block;
 }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
@@ -1537,7 +1555,7 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
 #define INSTANTIATE(_, data)                                       \
   template std::vector<std::array<SegmentId, DIM(data)>>           \
-  h5::identify_neighbors<DIM(data)>(                               \
+  h5::identify_all_neighbors<DIM(data)>(                           \
       const std::array<SegmentId, DIM(data)>& element_of_interest, \
       std::vector<std::array<SegmentId, DIM(data)>>& elements_in_block);
 

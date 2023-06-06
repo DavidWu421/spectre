@@ -659,9 +659,9 @@ void test_compute_element_refinements_and_indices_and_etc_and_ELCs() {
   //     "[B0,(L1I0,L1I1,L1I1)]",         "[B0,(L1I1,L3241I112,L13I91)]"};
 
   std::vector<std::string> test_grid_names{
-      "[B0,(L1I0,L1I0,L1I0)]", "[B0,(L1I1,L1I0,L1I0)]", "[B0,(L1I0,L1I1,L1I0)]",
-      "[B0,(L1I1,L1I1,L1I0)]", "[B0,(L1I0,L1I0,L1I1)]", "[B0,(L1I1,L1I0,L1I1)]",
-      "[B0,(L1I0,L1I1,L1I1)]", "[B0,(L1I1,L1I1,L1I1)]"};
+      "[B0,(L2I0,L1I0,L1I0)]", "[B0,(L2I1,L1I0,L1I0)]", "[B0,(L2I2,L1I0,L1I0)]",
+      "[B0,(L2I1,L1I1,L2I3)]", "[B0,(L2I0,L1I0,L1I1)]", "[B0,(L2I2,L1I0,L1I1)]",
+      "[B0,(L2I0,L1I1,L1I1)]", "[B0,(L2I1,L1I1,L1I1)]"};
 
   // h5::compute_element_refinements_and_indices<SpatialDim>(grid_names);
   std::pair<std::vector<std::array<size_t, SpatialDim>>,
@@ -678,7 +678,7 @@ void test_compute_element_refinements_and_indices_and_etc_and_ELCs() {
   h5::compute_element_logical_coordinates<SpatialDim>(
       h5::compute_element_meshes<SpatialDim>(bases, extents, quadratures));
 
-  h5::identify_neighbors<SpatialDim>(element_of_interest, elements);
+  h5::identify_all_neighbors<SpatialDim>(element_of_interest, elements);
 }
 
 }  // namespace

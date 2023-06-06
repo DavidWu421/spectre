@@ -285,7 +285,7 @@ bool share_endpoints(const SegmentId& segment_id_1,
                      const SegmentId& segment_id_2);
 
 template <size_t SpatialDim>
-std::vector<std::array<SegmentId, SpatialDim>> identify_neighbors(
+std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
     std::vector<std::array<SegmentId, SpatialDim>>& elements_in_block);
 
