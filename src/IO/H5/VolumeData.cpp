@@ -672,7 +672,7 @@ std::vector<Mesh<SpatialDim>> compute_element_meshes(
                                       block_quadratures_array};
     element_meshes.push_back(mesh_for_element);
 
-    std::cout << mesh_for_element.number_of_grid_points() << '\n';
+    // std::cout << mesh_for_element.number_of_grid_points() << '\n';
   }
 
   return element_meshes;
@@ -700,16 +700,56 @@ compute_element_logical_coordinates(
         grid_point_coordinates[k] =
             element_logical_coordinates_tensor.get(k)[j];
       }
-      std::cout << grid_point_coordinates[0] << ', '
-                << grid_point_coordinates[1] << ', '
-                << grid_point_coordinates[2] << '\n';
+      // std::cout << grid_point_coordinates[0] << ', '
+      //           << grid_point_coordinates[1] << ', '
+      //           << grid_point_coordinates[2] << '\n';
       element_logical_coordinates.push_back(grid_point_coordinates);
     }
     block_element_logical_coordinates.push_back(element_logical_coordinates);
-    std::cout << "NEW ELEMENT: " << '\n';
+    // std::cout << "NEW ELEMENT: " << '\n';
   }
 
   return block_element_logical_coordinates;
+}
+
+bool share_endpoints(const SegmentId& segment_id_1,
+                     const SegmentId& segment_id_2) {
+  bool overlaps = false;
+  double upper_1 = segment_id_1.endpoint(Side::Upper);
+  double lower_1 = segment_id_1.endpoint(Side::Lower);
+  double upper_2 = segment_id_2.endpoint(Side::Upper);
+  double lower_2 = segment_id_2.endpoint(Side::Lower);
+
+  if (upper_1 == upper_2 || upper_1 == lower_2 || lower_1 == upper_2 ||
+      lower_1 == lower_2) {
+    overlaps = true;
+  }
+
+  return overlaps;
+}
+
+template <size_t SpatialDim>
+std::vector<std::array<SegmentId, SpatialDim>> identify_neighbors(
+    const std::array<SegmentId, SpatialDim>& element_of_interest,
+    std::vector<std::array<SegmentId, SpatialDim>>& elements_in_block) {
+  std::cout << "NEIGHBORS!" << '\n';
+  std::vector<std::array<SegmentId, SpatialDim>> neighbors = {};
+
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    SegmentId current_segment_id = element_of_interest[i];
+    for (size_t j = 0; j < elements_in_block.size(); ++j) {
+      SegmentId segment_id_to_compare = elements_in_block[j][i];
+      bool overlaps = current_segment_id.overlaps(segment_id_to_compare);
+      bool endpoint = false;
+      share_endpoints(current_segment_id, segment_id_to_compare);
+      // if (current_segment_id.endpoint(Side::))
+      // if ( = false && ){
+
+      // }
+    }
+  }
+
+  return neighbors;
 }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
@@ -981,11 +1021,11 @@ void VolumeData::extend_connectivity_data(
         block_and_grid_point_map;
 
     // Create the sorted container for the grid points, which is a
-    // std::vector<std::vector>. The length of the first layer has length equal
-    // to the number of blocks, as each subvector corresponds to one of the
-    // blocks. Each subvector is of length equal to the number of grid points
-    // in the corresponding block, as we are storing an array of the block
-    // logical coordinates for each grid point.
+    // std::vector<std::vector>. The length of the first layer has length
+    // equal to the number of blocks, as each subvector corresponds to one of
+    // the blocks. Each subvector is of length equal to the number of grid
+    // points in the corresponding block, as we are storing an array of the
+    // block logical coordinates for each grid point.
     std::vector<std::vector<std::array<double, SpatialDim>>>
         block_logical_coordinates_by_block;
     block_logical_coordinates_by_block.reserve(number_of_blocks);
@@ -1487,6 +1527,19 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
   template std::vector<std::vector<std::array<double, DIM(data)>>> \
   h5::compute_element_logical_coordinates<DIM(data)>(              \
       const std::vector<Mesh<DIM(data)>>& element_meshes);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                       \
+  template std::vector<std::array<SegmentId, DIM(data)>>           \
+  h5::identify_neighbors<DIM(data)>(                               \
+      const std::array<SegmentId, DIM(data)>& element_of_interest, \
+      std::vector<std::array<SegmentId, DIM(data)>>& elements_in_block);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 

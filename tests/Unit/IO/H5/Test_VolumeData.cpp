@@ -671,10 +671,14 @@ void test_compute_element_refinements_and_indices_and_etc_and_ELCs() {
               test_grid_names);
 
   h5::create_SegmentIds<SpatialDim>(refinement_and_indices);
+  auto elements = h5::create_SegmentIds<SpatialDim>(refinement_and_indices);
+  auto element_of_interest = elements[0];
   // h5::compute_element_meshes<SpatialDim>(bases, extents, quadratures);
 
   h5::compute_element_logical_coordinates<SpatialDim>(
       h5::compute_element_meshes<SpatialDim>(bases, extents, quadratures));
+
+  h5::identify_neighbors<SpatialDim>(element_of_interest, elements);
 }
 
 }  // namespace

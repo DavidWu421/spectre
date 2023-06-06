@@ -281,4 +281,12 @@ std::vector<std::vector<std::array<double, SpatialDim>>>
 compute_element_logical_coordinates(
     const std::vector<Mesh<SpatialDim>>& element_meshes);
 
+bool share_endpoints(const SegmentId& segment_id_1,
+                     const SegmentId& segment_id_2);
+
+template <size_t SpatialDim>
+std::vector<std::array<SegmentId, SpatialDim>> identify_neighbors(
+    const std::array<SegmentId, SpatialDim>& element_of_interest,
+    std::vector<std::array<SegmentId, SpatialDim>>& elements_in_block);
+
 }  // namespace h5
