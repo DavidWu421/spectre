@@ -289,4 +289,17 @@ std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
     std::vector<std::array<SegmentId, SpatialDim>>& elements_in_block);
 
+template <size_t SpatialDim>
+std::array<int, SpatialDim> identify_neighbor_direction(
+    const std::array<SegmentId, SpatialDim>& element_of_interest,
+    const std::array<SegmentId, SpatialDim>& element_to_compare);
+
+template <size_t SpatialDim>
+std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
+                                 std::array<int, SpatialDim>>>,
+           SpatialDim>
+identify_neighbor_type(
+    const std::array<SegmentId, SpatialDim>& element_of_interest,
+    std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors);
+
 }  // namespace h5

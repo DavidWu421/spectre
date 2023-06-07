@@ -753,10 +753,10 @@ std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
         elements_in_block.begin(), elements_in_block.end(),
         [&i, &current_segment_id](
             std::array<SegmentId, SpatialDim> element_to_compare) {
-          bool overlaps = current_segment_id.overlaps(element_to_compare[i]);
+          // only need touches since if they overlap, they also touch
           bool touches =
               share_endpoints(current_segment_id, element_to_compare[i]);
-          if (overlaps == true || touches == true) {
+          if (touches == true) {
             return false;
           } else {
             return true;
@@ -768,6 +768,111 @@ std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
 
   std::cout << "size: " << elements_in_block.size() << '\n';
   return elements_in_block;
+}
+
+template <size_t SpatialDim>
+std::array<int, SpatialDim> identify_neighbor_direction(
+    const std::array<SegmentId, SpatialDim>& element_of_interest,
+    const std::array<SegmentId, SpatialDim>& element_to_compare) {
+  std::array<int, SpatialDim> normal_vector;
+  // needs to be 0's
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    if (element_of_interest[i].endpoint(Side::Upper) ==
+        element_to_compare[i].endpoint(Side::Lower)) {
+      normal_vector[i] = 1;
+    }
+    if (element_of_interest[i].endpoint(Side::Lower) ==
+        element_to_compare[i].endpoint(Side::Upper)) {
+      normal_vector[i] = -1;
+    }
+    if (element_of_interest[i].endpoint(Side::Upper) ==
+            element_to_compare[i].endpoint(Side::Upper) ||
+        element_of_interest[i].endpoint(Side::Lower) ==
+            element_to_compare[i].endpoint(Side::Lower)) {
+      normal_vector[i] = 0;
+    }
+  }
+
+  return normal_vector;
+}
+
+template <size_t SpatialDim>
+std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
+                                 std::array<int, SpatialDim>>>,
+           SpatialDim>
+identify_neighbor_type(
+    const std::array<SegmentId, SpatialDim>& element_of_interest,
+    std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors) {
+  // outputs a std::array of length spatialdim of elements. First are face
+  // neighbors, then edge neighbors, then corner neighbors. Then it also returns
+  // a std::array of the normal vector of each neighbor as well in a std::pair
+  std::cout << "AHHHH" << '\n';
+  std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
+                                   std::array<int, SpatialDim>>>,
+             SpatialDim>
+      neighbors_by_type;
+
+  std::vector<
+      std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>>
+      face_neighbors = {};
+  // if (SpatialDim >= 2) {
+  std::vector<
+      std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>>
+      edge_neighbors = {};
+  // }
+  // if (SpatialDim == 3) {
+  std::vector<
+      std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>>
+      corner_neighbors = {};
+  // }
+
+  for (size_t i = 0; i < all_neighbors.size(); ++i) {
+    std::array<int, SpatialDim> normal_vector =
+        identify_neighbor_direction(element_of_interest, all_neighbors[i]);
+    std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>
+        neighbor_with_direction{all_neighbors[i], normal_vector};
+    int normal_value = 0;
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      normal_value += abs(normal_vector[j]);
+    }
+    if (normal_value == 1) {
+      face_neighbors.push_back(neighbor_with_direction);
+    }
+    if (SpatialDim >= 2 && normal_value == 2) {
+      edge_neighbors.push_back(neighbor_with_direction);
+    }
+    if (SpatialDim == 3 && normal_value == 3) {
+      corner_neighbors.push_back(neighbor_with_direction);
+    }
+  }
+  neighbors_by_type[0] = face_neighbors;
+  if (SpatialDim >= 2) {
+    neighbors_by_type[1] = edge_neighbors;
+  }
+  if (SpatialDim == 3) {
+    neighbors_by_type[2] = corner_neighbors;
+  }
+
+  // print statements to print out everything to check
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    if (i == 0) {
+      std::cout << "face neighbors: " << '\n';
+    }
+    if (i == 1) {
+      std::cout << "edge neighbors: " << '\n';
+    }
+    if (i == 2) {
+      std::cout << "corner neighbors: " << '\n';
+    }
+    std::cout << neighbors_by_type[i].size();
+    for (size_t j = 0; j < neighbors_by_type[i].size(); ++j) {
+      std::cout << "normal vector: " << neighbors_by_type[i][j].second[0]
+                << ", " << neighbors_by_type[i][j].second[1] << ", "
+                << neighbors_by_type[i][j].second[2] << '\n';
+    }
+  }
+
+  return neighbors_by_type;
 }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
@@ -1558,6 +1663,34 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
   h5::identify_all_neighbors<DIM(data)>(                           \
       const std::array<SegmentId, DIM(data)>& element_of_interest, \
       std::vector<std::array<SegmentId, DIM(data)>>& elements_in_block);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                       \
+  template std::array<int, DIM(data)>                              \
+  h5::identify_neighbor_direction<DIM(data)>(                      \
+      const std::array<SegmentId, DIM(data)>& element_of_interest, \
+      const std::array<SegmentId, DIM(data)>& element_to_compare);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                                  \
+  template std::array<std::vector<std::pair<std::array<SegmentId, DIM(data)>, \
+                                            std::array<int, DIM(data)>>>,     \
+                      DIM(data)>                                              \
+  h5::identify_neighbor_type<DIM(data)>(                                      \
+      const std::array<SegmentId, DIM(data)>& element_of_interest,            \
+      std::vector<std::array<SegmentId, DIM(data)>>& all_neighbors);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
