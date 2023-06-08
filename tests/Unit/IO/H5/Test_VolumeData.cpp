@@ -683,6 +683,14 @@ void test_compute_element_refinements_and_indices_and_etc_and_ELCs() {
   h5::identify_neighbor_type<SpatialDim>(element_of_interest, all_neighbors);
   // h5::identify_neighbor_direction<SpatialDim>(element_of_interest,
   // all_neighbors[0]);
+  std::pair<std::array<size_t, SpatialDim>, std::array<size_t, SpatialDim>>
+      element_refinement_and_indices{refinement_and_indices.first[0],
+                                     refinement_and_indices.second[0]};
+  h5::generate_block_logical_coordinates_for_element<SpatialDim>(
+      h5::compute_element_logical_coordinates<SpatialDim>(
+          h5::compute_element_meshes<SpatialDim>(bases, extents,
+                                                 quadratures))[0],
+      element_refinement_and_indices);
 }
 
 }  // namespace

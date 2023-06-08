@@ -377,6 +377,7 @@ std::pair<std::vector<std::array<int, SpatialDim>>,
           std::vector<std::array<int, SpatialDim>>>
 compute_element_refinements_and_indices(
     const std::vector<std::string>& block_grid_names) {
+  // either the name of the function or the return order should be changed
   std::vector<std::array<int, SpatialDim>> h_ref_array = {};
   for (size_t i = 0; i < block_grid_names.size(); ++i) {
     std::string grid_name_string = block_grid_names[i];
@@ -682,7 +683,7 @@ template <size_t SpatialDim>
 std::vector<std::vector<std::array<double, SpatialDim>>>
 compute_element_logical_coordinates(
     const std::vector<Mesh<SpatialDim>>& element_meshes) {
-  // ONLY COMPUTES THE ELCS ALL ELEMENTS IN THE BLOCK
+  // COMPUTES THE ELCS OF ALL ELEMENTS IN THE BLOCK
 
   std::cout << "ELCS!" << '\n';
   std::vector<std::vector<std::array<double, SpatialDim>>>
@@ -748,7 +749,7 @@ std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
   for (size_t i = 0; i < SpatialDim; ++i) {
     SegmentId current_segment_id = element_of_interest[i];
     std::cout << "size: " << elements_in_block.size() << '\n';
-    // lambda identifies the idicies of the non neighbors in not_neighbors
+    // lambda identifies the indicies of the non neighbors in not_neighbors
     auto not_neighbors = std::remove_if(
         elements_in_block.begin(), elements_in_block.end(),
         [&i, &current_segment_id](
@@ -806,7 +807,6 @@ identify_neighbor_type(
   // outputs a std::array of length spatialdim of elements. First are face
   // neighbors, then edge neighbors, then corner neighbors. Then it also returns
   // a std::array of the normal vector of each neighbor as well in a std::pair
-  std::cout << "AHHHH" << '\n';
   std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
                                    std::array<int, SpatialDim>>>,
              SpatialDim>
@@ -854,25 +854,67 @@ identify_neighbor_type(
   }
 
   // print statements to print out everything to check
-  for (size_t i = 0; i < SpatialDim; ++i) {
-    if (i == 0) {
-      std::cout << "face neighbors: " << '\n';
-    }
-    if (i == 1) {
-      std::cout << "edge neighbors: " << '\n';
-    }
-    if (i == 2) {
-      std::cout << "corner neighbors: " << '\n';
-    }
-    std::cout << neighbors_by_type[i].size();
-    for (size_t j = 0; j < neighbors_by_type[i].size(); ++j) {
-      std::cout << "normal vector: " << neighbors_by_type[i][j].second[0]
-                << ", " << neighbors_by_type[i][j].second[1] << ", "
-                << neighbors_by_type[i][j].second[2] << '\n';
-    }
-  }
+  // for (size_t i = 0; i < SpatialDim; ++i) {
+  //   if (i == 0) {
+  //     std::cout << "face neighbors: " << '\n';
+  //   }
+  //   if (i == 1) {
+  //     std::cout << "edge neighbors: " << '\n';
+  //   }
+  //   if (i == 2) {
+  //     std::cout << "corner neighbors: " << '\n';
+  //   }
+  //   std::cout << neighbors_by_type[i].size();
+  //   for (size_t j = 0; j < neighbors_by_type[i].size(); ++j) {
+  //     std::cout << "normal vector: " << neighbors_by_type[i][j].second[0]
+  //               << ", " << neighbors_by_type[i][j].second[1] << ", "
+  //               << neighbors_by_type[i][j].second[2] << '\n';
+  //   }
+  // }
 
   return neighbors_by_type;
+}
+
+template <size_t SpatialDim>
+std::vector<std::array<double, SpatialDim>>
+generate_block_logical_coordinates_for_element(
+    const std::vector<std::array<double, SpatialDim>>&
+        element_logical_coordinates,
+    const std::pair<std::array<size_t, SpatialDim>,
+                    std::array<size_t, SpatialDim>>& refinements_and_indices) {
+  std::cout << element_logical_coordinates.size() << '\n';
+
+  std::vector<std::array<double, SpatialDim>> BLC_for_element;
+  for (size_t i = 0; i < element_logical_coordinates.size(); ++i) {
+    std::array<double, SpatialDim> BLC_of_gridpoint;
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      int number_of_elements = pow(2, refinements_and_indices.second[j]);
+      double shift =
+          -1 + (2 * static_cast<double>(refinements_and_indices.first[j]) + 1) /
+                   static_cast<double>(number_of_elements);
+      BLC_of_gridpoint[j] =
+          element_logical_coordinates[i][j] / number_of_elements + shift;
+    }
+    BLC_for_element.push_back(BLC_of_gridpoint);
+  }
+
+  // sor the BLC by increasing z, then y, then x
+  std::sort(BLC_for_element.begin(), BLC_for_element.end(),
+            [](const auto& lhs, const auto& rhs) {
+              return std::lexicographical_compare(lhs.begin(), lhs.end(),
+                                                  rhs.begin(), rhs.end());
+            });
+
+  // print statements to test
+  for (size_t i = 0; i < BLC_for_element.size(); ++i) {
+    // std::cout << "ELC: " << element_logical_coordinates[i][0] << ", "
+    //           << element_logical_coordinates[i][1] << ", "
+    //           << element_logical_coordinates[i][2] << '\n';
+    std::cout << "BLC: " << BLC_for_element[i][0] << ", "
+              << BLC_for_element[i][1] << ", " << BLC_for_element[i][2] << '\n';
+  }
+
+  return BLC_for_element;
 }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
@@ -1691,6 +1733,22 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
   h5::identify_neighbor_type<DIM(data)>(                                      \
       const std::array<SegmentId, DIM(data)>& element_of_interest,            \
       std::vector<std::array<SegmentId, DIM(data)>>& all_neighbors);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                 \
+  template std::vector<std::array<double, DIM(data)>>        \
+  generate_block_logical_coordinates_for_element<DIM(data)>( \
+      const std::vector<std::array<double, DIM(data)>>&      \
+          element_logical_coordinates,                       \
+      const std::pair<std::array<size_t, DIM(data)>,         \
+                      std::array<size_t, DIM(data)>>&        \
+          refinements_and_indices);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 

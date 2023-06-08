@@ -302,4 +302,12 @@ identify_neighbor_type(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
     std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors);
 
+template <size_t SpatialDim>
+std::vector<std::array<double, SpatialDim>>
+generate_block_logical_coordinates_for_element(
+    const std::vector<std::array<double, SpatialDim>>&
+        element_logical_coordinates,
+    const std::pair<std::array<size_t, SpatialDim>,
+                    std::array<size_t, SpatialDim>>& refinements_and_indices);
+
 }  // namespace h5
