@@ -652,65 +652,51 @@ std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
 }
 
 template <size_t SpatialDim>
-std::vector<Mesh<SpatialDim>> compute_element_meshes(
-    const std::vector<std::vector<Spectral::Basis>>& block_bases,
-    const std::vector<std::vector<size_t>>& block_extents,
-    const std::vector<std::vector<Spectral::Quadrature>>& block_quadratures) {
-  // COMPUTES THE ELEMENT MESHES FOR ALL ELEMENTS WITHIN THE BLOCK
-  std::vector<Mesh<SpatialDim>> element_meshes = {};
+Mesh<SpatialDim> compute_element_mesh(
+    const std::vector<Spectral::Basis>& element_bases,
+    const std::vector<size_t>& element_extents,
+    const std::vector<Spectral::Quadrature>& element_quadratures) {
+  // COMPUTES THE ELEMENT MESH FOR ONE ELEMENT
 
-  std::array<Spectral::Basis, SpatialDim> block_bases_array;
-  std::array<Spectral::Quadrature, SpatialDim> block_quadratures_array;
-  std::array<size_t, SpatialDim> block_extents_array;
+  std::array<Spectral::Basis, SpatialDim> element_bases_array;
+  std::array<Spectral::Quadrature, SpatialDim> element_quadratures_array;
+  std::array<size_t, SpatialDim> element_extents_array;
 
-  for (size_t i = 0; i < block_bases.size(); ++i) {
-    for (size_t j = 0; j < SpatialDim; j++) {
-      block_bases_array[j] = block_bases[i][j];
-      block_quadratures_array[j] = block_quadratures[i][j];
-      block_extents_array[j] = block_extents[i][j];
-    }
-    Mesh<SpatialDim> mesh_for_element{block_extents_array, block_bases_array,
-                                      block_quadratures_array};
-    element_meshes.push_back(mesh_for_element);
+  std::copy_n(element_bases.begin(), SpatialDim, element_bases_array.begin());
+  std::copy_n(element_extents.begin(), SpatialDim,
+              element_extents_array.begin());
+  std::copy_n(element_quadratures.begin(), SpatialDim,
+              element_quadratures_array.begin());
+  Mesh<SpatialDim> element_mesh{element_extents_array, element_bases_array,
+                                element_quadratures_array};
 
-    // std::cout << mesh_for_element.number_of_grid_points() << '\n';
-  }
+  std::cout << element_mesh.number_of_grid_points() << '\n';
 
-  return element_meshes;
+  return element_mesh;
 }
 
 template <size_t SpatialDim>
-std::vector<std::vector<std::array<double, SpatialDim>>>
-compute_element_logical_coordinates(
-    const std::vector<Mesh<SpatialDim>>& element_meshes) {
-  // COMPUTES THE ELCS OF ALL ELEMENTS IN THE BLOCK
+std::vector<std::array<double, SpatialDim>> compute_element_logical_coordinates(
+    const Mesh<SpatialDim>& element_mesh) {
+  // COMPUTES THE ELCS OF ONE ELEMENT
 
   // std::cout << "ELCS!" << '\n';
-  std::vector<std::vector<std::array<double, SpatialDim>>>
-      block_element_logical_coordinates = {};
+
   std::array<double, SpatialDim> grid_point_coordinates;
 
-  for (size_t i = 0; i < element_meshes.size(); ++i) {
-    std::vector<std::array<double, SpatialDim>> element_logical_coordinates =
-        {};
-    auto element_logical_coordinates_tensor =
-        logical_coordinates(element_meshes[i]);
-    for (size_t j = 0; j < element_logical_coordinates_tensor.get(0).size();
-         ++j) {
-      for (size_t k = 0; k < SpatialDim; ++k) {
-        grid_point_coordinates[k] =
-            element_logical_coordinates_tensor.get(k)[j];
-      }
-      // std::cout << grid_point_coordinates[0] << ', '
-      //           << grid_point_coordinates[1] << ', '
-      //           << grid_point_coordinates[2] << '\n';
-      element_logical_coordinates.push_back(grid_point_coordinates);
+  std::vector<std::array<double, SpatialDim>> element_logical_coordinates = {};
+  auto element_logical_coordinates_tensor = logical_coordinates(element_mesh);
+  for (size_t i = 0; i < element_logical_coordinates_tensor.get(0).size();
+       ++i) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      grid_point_coordinates[j] = element_logical_coordinates_tensor.get(j)[i];
     }
-    block_element_logical_coordinates.push_back(element_logical_coordinates);
-    // std::cout << "NEW ELEMENT: " << '\n';
+    std::cout << grid_point_coordinates[0] << ", " << grid_point_coordinates[1]
+              << ", " << grid_point_coordinates[2] << '\n';
+    element_logical_coordinates.push_back(grid_point_coordinates);
   }
 
-  return block_element_logical_coordinates;
+  return element_logical_coordinates;
 }
 
 bool share_endpoints(const SegmentId& segment_id_1,
@@ -854,23 +840,23 @@ identify_neighbor_type(
   }
 
   // print statements to print out everything to check
-  // for (size_t i = 0; i < SpatialDim; ++i) {
-  //   if (i == 0) {
-  //     std::cout << "face neighbors: " << '\n';
-  //   }
-  //   if (i == 1) {
-  //     std::cout << "edge neighbors: " << '\n';
-  //   }
-  //   if (i == 2) {
-  //     std::cout << "corner neighbors: " << '\n';
-  //   }
-  //   std::cout << neighbors_by_type[i].size();
-  //   for (size_t j = 0; j < neighbors_by_type[i].size(); ++j) {
-  //     std::cout << "normal vector: " << neighbors_by_type[i][j].second[0]
-  //               << ", " << neighbors_by_type[i][j].second[1] << ", "
-  //               << neighbors_by_type[i][j].second[2] << '\n';
-  //   }
-  // }
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    if (i == 0) {
+      std::cout << "face neighbors: " << '\n';
+    }
+    if (i == 1) {
+      std::cout << "edge neighbors: " << '\n';
+    }
+    if (i == 2) {
+      std::cout << "corner neighbors: " << '\n';
+    }
+    std::cout << neighbors_by_type[i].size();
+    for (size_t j = 0; j < neighbors_by_type[i].size(); ++j) {
+      std::cout << "normal vector: " << neighbors_by_type[i][j].second[0]
+                << ", " << neighbors_by_type[i][j].second[1] << ", "
+                << neighbors_by_type[i][j].second[2] << '\n';
+    }
+  }
 
   return neighbors_by_type;
 }
@@ -1674,12 +1660,11 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
 #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 
-#define INSTANTIATE(_, data)                                                   \
-  template std::vector<Mesh<DIM(data)>> h5::compute_element_meshes<DIM(data)>( \
-      const std::vector<std::vector<Spectral::Basis>>& block_bases,            \
-      const std::vector<std::vector<size_t>>& block_extents,                   \
-      const std::vector<std::vector<Spectral::Quadrature>>&                    \
-          block_quadratures);
+#define INSTANTIATE(_, data)                                    \
+  template Mesh<DIM(data)> h5::compute_element_mesh<DIM(data)>( \
+      const std::vector<Spectral::Basis>& element_bases,        \
+      const std::vector<size_t>& element_extents,               \
+      const std::vector<Spectral::Quadrature>& element_quadratures);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
@@ -1688,10 +1673,10 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
 #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 
-#define INSTANTIATE(_, data)                                       \
-  template std::vector<std::vector<std::array<double, DIM(data)>>> \
-  h5::compute_element_logical_coordinates<DIM(data)>(              \
-      const std::vector<Mesh<DIM(data)>>& element_meshes);
+#define INSTANTIATE(_, data)                          \
+  template std::vector<std::array<double, DIM(data)>> \
+  h5::compute_element_logical_coordinates<DIM(data)>( \
+      const Mesh<DIM(data)>& element_mesh);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 

@@ -673,24 +673,22 @@ void test_compute_element_indices_and_refinements_and_etc_and_ELCs() {
   h5::create_SegmentIds<SpatialDim>(indices_and_refinements);
   auto elements = h5::create_SegmentIds<SpatialDim>(indices_and_refinements);
   auto element_of_interest = elements[7];
-  // h5::compute_element_meshes<SpatialDim>(bases, extents, quadratures);
+  auto first_element_mesh = h5::compute_element_mesh<SpatialDim>(
+      bases[7], extents[7], quadratures[7]);
 
-  h5::compute_element_logical_coordinates<SpatialDim>(
-      h5::compute_element_meshes<SpatialDim>(bases, extents, quadratures));
+  auto first_element_ELC =
+      h5::compute_element_logical_coordinates<SpatialDim>(first_element_mesh);
 
   auto all_neighbors =
       h5::identify_all_neighbors<SpatialDim>(element_of_interest, elements);
   h5::identify_neighbor_type<SpatialDim>(element_of_interest, all_neighbors);
-  // h5::identify_neighbor_direction<SpatialDim>(element_of_interest,
-  // all_neighbors[0]);
+  h5::identify_neighbor_direction<SpatialDim>(element_of_interest,
+                                              all_neighbors[0]);
   std::pair<std::array<size_t, SpatialDim>, std::array<size_t, SpatialDim>>
-      element_indices_and_refinements{indices_and_refinements.first[5],
-                                      indices_and_refinements.second[5]};
+      element_indices_and_refinements{indices_and_refinements.first[7],
+                                      indices_and_refinements.second[7]};
   h5::generate_block_logical_coordinates_for_element<SpatialDim>(
-      h5::compute_element_logical_coordinates<SpatialDim>(
-          h5::compute_element_meshes<SpatialDim>(bases, extents,
-                                                 quadratures))[5],
-      element_indices_and_refinements);
+      first_element_ELC, element_indices_and_refinements);
 }
 
 }  // namespace

@@ -271,15 +271,14 @@ std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
         indices_and_refinements);
 
 template <size_t SpatialDim>
-std::vector<Mesh<SpatialDim>> compute_element_meshes(
-    const std::vector<std::vector<Spectral::Basis>>& block_bases,
-    const std::vector<std::vector<size_t>>& block_extents,
-    const std::vector<std::vector<Spectral::Quadrature>>& block_quadratures);
+Mesh<SpatialDim> compute_element_mesh(
+    const std::vector<Spectral::Basis>& element_bases,
+    const std::vector<size_t>& element_extents,
+    const std::vector<Spectral::Quadrature>& element_quadratures);
 
 template <size_t SpatialDim>
-std::vector<std::vector<std::array<double, SpatialDim>>>
-compute_element_logical_coordinates(
-    const std::vector<Mesh<SpatialDim>>& element_meshes);
+std::vector<std::array<double, SpatialDim>> compute_element_logical_coordinates(
+    const Mesh<SpatialDim>& element_mesh);
 
 bool share_endpoints(const SegmentId& segment_id_1,
                      const SegmentId& segment_id_2);
