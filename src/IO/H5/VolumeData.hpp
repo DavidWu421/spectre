@@ -261,14 +261,14 @@ Mesh<Dim> mesh_for_grid(
 template <size_t SpatialDim>
 std::pair<std::vector<std::array<size_t, SpatialDim>>,
           std::vector<std::array<size_t, SpatialDim>>>
-compute_element_refinements_and_indices(
+compute_element_indices_and_refinements(
     const std::vector<std::string>& block_grid_names);
 
 template <size_t SpatialDim>
 std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
     const std::pair<std::vector<std::array<size_t, SpatialDim>>,
                     std::vector<std::array<size_t, SpatialDim>>>&
-        refinements_and_indices);
+        indices_and_refinements);
 
 template <size_t SpatialDim>
 std::vector<Mesh<SpatialDim>> compute_element_meshes(
@@ -308,6 +308,6 @@ generate_block_logical_coordinates_for_element(
     const std::vector<std::array<double, SpatialDim>>&
         element_logical_coordinates,
     const std::pair<std::array<size_t, SpatialDim>,
-                    std::array<size_t, SpatialDim>>& refinements_and_indices);
+                    std::array<size_t, SpatialDim>>& indices_and_refinements);
 
 }  // namespace h5

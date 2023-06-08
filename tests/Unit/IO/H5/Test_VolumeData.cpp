@@ -516,7 +516,7 @@ void test_extend_connectivity_data() {
 }
 
 template <size_t SpatialDim>
-void test_compute_element_refinements_and_indices_and_etc_and_ELCs() {
+void test_compute_element_indices_and_refinements_and_etc_and_ELCs() {
   // Sample volume data
   const std::vector<size_t>& observation_ids{2345};
   const std::vector<double>& observation_values{1.0};
@@ -663,15 +663,15 @@ void test_compute_element_refinements_and_indices_and_etc_and_ELCs() {
       "[B0,(L1I0,L1I0,L1I1)]", "[B0,(L1I1,L1I1,L1I0)]", "[B0,(L1I0,L1I1,L1I1)]",
       "[B0,(L1I1,L1I0,L1I1)]", "[B0,(L1I1,L1I1,L1I1)]"};
 
-  // h5::compute_element_refinements_and_indices<SpatialDim>(grid_names);
+  // h5::compute_element_indices_and_refinements<SpatialDim>(grid_names);
   std::pair<std::vector<std::array<size_t, SpatialDim>>,
             std::vector<std::array<size_t, SpatialDim>>>
-      refinement_and_indices =
-          h5::compute_element_refinements_and_indices<SpatialDim>(
+      indices_and_refinements =
+          h5::compute_element_indices_and_refinements<SpatialDim>(
               test_grid_names);
 
-  h5::create_SegmentIds<SpatialDim>(refinement_and_indices);
-  auto elements = h5::create_SegmentIds<SpatialDim>(refinement_and_indices);
+  h5::create_SegmentIds<SpatialDim>(indices_and_refinements);
+  auto elements = h5::create_SegmentIds<SpatialDim>(indices_and_refinements);
   auto element_of_interest = elements[7];
   // h5::compute_element_meshes<SpatialDim>(bases, extents, quadratures);
 
@@ -684,13 +684,13 @@ void test_compute_element_refinements_and_indices_and_etc_and_ELCs() {
   // h5::identify_neighbor_direction<SpatialDim>(element_of_interest,
   // all_neighbors[0]);
   std::pair<std::array<size_t, SpatialDim>, std::array<size_t, SpatialDim>>
-      element_refinement_and_indices{refinement_and_indices.first[0],
-                                     refinement_and_indices.second[0]};
+      element_indices_and_refinements{indices_and_refinements.first[5],
+                                      indices_and_refinements.second[5]};
   h5::generate_block_logical_coordinates_for_element<SpatialDim>(
       h5::compute_element_logical_coordinates<SpatialDim>(
           h5::compute_element_meshes<SpatialDim>(bases, extents,
-                                                 quadratures))[0],
-      element_refinement_and_indices);
+                                                 quadratures))[5],
+      element_indices_and_refinements);
 }
 
 }  // namespace
@@ -702,7 +702,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   // test_extend_connectivity_data<1>();
   // test_extend_connectivity_data<2>();
   // test_extend_connectivity_data<3>();
-  test_compute_element_refinements_and_indices_and_etc_and_ELCs<3>();
+  test_compute_element_indices_and_refinements_and_etc_and_ELCs<3>();
 
 #ifdef SPECTRE_DEBUG
   CHECK_THROWS_WITH(

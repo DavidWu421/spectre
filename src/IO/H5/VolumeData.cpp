@@ -375,7 +375,7 @@ std::vector<std::array<double, SpatialDim>> generate_block_logical_coordinates(
 template <size_t SpatialDim>
 std::pair<std::vector<std::array<int, SpatialDim>>,
           std::vector<std::array<int, SpatialDim>>>
-compute_element_refinements_and_indices(
+compute_element_indices_and_refinements(
     const std::vector<std::string>& block_grid_names) {
   // either the name of the function or the return order should be changed
   std::vector<std::array<int, SpatialDim>> h_ref_array = {};
@@ -552,7 +552,7 @@ generate_new_connectivity(
 template <size_t SpatialDim>
 std::pair<std::vector<std::array<size_t, SpatialDim>>,
           std::vector<std::array<size_t, SpatialDim>>>
-compute_element_refinements_and_indices(
+compute_element_indices_and_refinements(
     const std::vector<std::string>& block_grid_names) {
   // Computes the refinements and indieces for all the elements in a given block
   // when given the grid names for that particular block. This function CANNOT
@@ -625,16 +625,16 @@ template <size_t SpatialDim>
 std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
     const std::pair<std::vector<std::array<size_t, SpatialDim>>,
                     std::vector<std::array<size_t, SpatialDim>>>&
-        refinements_and_indices) {
+        indices_and_refinements) {
   // Creates a std::vector of the segmentIds of each element in the block that
   // is the same block as the block for which the refinement and indices are
   // calculated.
   std::vector<std::array<SegmentId, SpatialDim>> segment_ids = {};
   std::array<SegmentId, SpatialDim> segment_ids_of_current_element;
-  for (size_t i = 0; i < refinements_and_indices.first.size(); ++i) {
+  for (size_t i = 0; i < indices_and_refinements.first.size(); ++i) {
     for (size_t j = 0; j < SpatialDim; ++j) {
-      SegmentId current_segment_id(refinements_and_indices.second[i][j],
-                                   refinements_and_indices.first[i][j]);
+      SegmentId current_segment_id(indices_and_refinements.second[i][j],
+                                   indices_and_refinements.first[i][j]);
       segment_ids_of_current_element[j] = current_segment_id;
     }
     segment_ids.push_back(segment_ids_of_current_element);
@@ -642,7 +642,7 @@ std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
 
   // std::cout << "SEGID midpoints!!!" << '\n';
 
-  // for (size_t i = 0; i < refinements_and_indices.first.size(); ++i) {
+  // for (size_t i = 0; i < indices_and_refinements.first.size(); ++i) {
   //   for (size_t j = 0; j < SpatialDim; ++j) {
   //     std::cout << segment_ids[i][j].midpoint() << '\n';
   //   }
@@ -685,7 +685,7 @@ compute_element_logical_coordinates(
     const std::vector<Mesh<SpatialDim>>& element_meshes) {
   // COMPUTES THE ELCS OF ALL ELEMENTS IN THE BLOCK
 
-  std::cout << "ELCS!" << '\n';
+  // std::cout << "ELCS!" << '\n';
   std::vector<std::vector<std::array<double, SpatialDim>>>
       block_element_logical_coordinates = {};
   std::array<double, SpatialDim> grid_point_coordinates;
@@ -735,7 +735,7 @@ std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
     std::vector<std::array<SegmentId, SpatialDim>>& elements_in_block) {
   // identifies all neighbors(face to face, edge, and corner)
-  std::cout << "NEIGHBORS!" << '\n';
+  // std::cout << "NEIGHBORS!" << '\n';
 
   // remove the element_of_interest from the list of neighbors
   for (size_t i = 0; i < elements_in_block.size(); ++i) {
@@ -748,7 +748,7 @@ std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
 
   for (size_t i = 0; i < SpatialDim; ++i) {
     SegmentId current_segment_id = element_of_interest[i];
-    std::cout << "size: " << elements_in_block.size() << '\n';
+    // std::cout << "size: " << elements_in_block.size() << '\n';
     // lambda identifies the indicies of the non neighbors in not_neighbors
     auto not_neighbors = std::remove_if(
         elements_in_block.begin(), elements_in_block.end(),
@@ -767,7 +767,7 @@ std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
     elements_in_block.erase(not_neighbors, elements_in_block.end());
   }
 
-  std::cout << "size: " << elements_in_block.size() << '\n';
+  // std::cout << "size: " << elements_in_block.size() << '\n';
   return elements_in_block;
 }
 
@@ -881,16 +881,16 @@ generate_block_logical_coordinates_for_element(
     const std::vector<std::array<double, SpatialDim>>&
         element_logical_coordinates,
     const std::pair<std::array<size_t, SpatialDim>,
-                    std::array<size_t, SpatialDim>>& refinements_and_indices) {
-  std::cout << element_logical_coordinates.size() << '\n';
+                    std::array<size_t, SpatialDim>>& indices_and_refinements) {
+  // std::cout << element_logical_coordinates.size() << '\n';
 
   std::vector<std::array<double, SpatialDim>> BLC_for_element;
   for (size_t i = 0; i < element_logical_coordinates.size(); ++i) {
     std::array<double, SpatialDim> BLC_of_gridpoint;
     for (size_t j = 0; j < SpatialDim; ++j) {
-      int number_of_elements = pow(2, refinements_and_indices.second[j]);
+      int number_of_elements = pow(2, indices_and_refinements.second[j]);
       double shift =
-          -1 + (2 * static_cast<double>(refinements_and_indices.first[j]) + 1) /
+          -1 + (2 * static_cast<double>(indices_and_refinements.first[j]) + 1) /
                    static_cast<double>(number_of_elements);
       BLC_of_gridpoint[j] =
           element_logical_coordinates[i][j] / number_of_elements + shift;
@@ -1650,7 +1650,7 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 #define INSTANTIATE(_, data)                                     \
   template std::pair<std::vector<std::array<size_t, DIM(data)>>, \
                      std::vector<std::array<size_t, DIM(data)>>> \
-  h5::compute_element_refinements_and_indices<DIM(data)>(        \
+  h5::compute_element_indices_and_refinements<DIM(data)>(        \
       const std::vector<std::string>& block_grid_names);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
@@ -1665,7 +1665,7 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
   h5::create_SegmentIds<DIM(data)>(                                \
       const std::pair<std::vector<std::array<size_t, DIM(data)>>,  \
                       std::vector<std::array<size_t, DIM(data)>>>& \
-          refinements_and_indices);
+          indices_and_refinements);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
@@ -1748,7 +1748,7 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
           element_logical_coordinates,                       \
       const std::pair<std::array<size_t, DIM(data)>,         \
                       std::array<size_t, DIM(data)>>&        \
-          refinements_and_indices);
+          indices_and_refinements);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
