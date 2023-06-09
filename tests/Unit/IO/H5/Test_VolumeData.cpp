@@ -689,6 +689,7 @@ void test_compute_element_indices_and_refinements_and_etc_and_ELCs() {
                                       indices_and_refinements.second[7]};
   h5::generate_block_logical_coordinates_for_element<SpatialDim>(
       first_element_ELC, element_indices_and_refinements);
+  h5::grid_names_position<SpatialDim>(element_of_interest, test_grid_names);
 }
 
 }  // namespace

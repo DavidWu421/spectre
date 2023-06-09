@@ -556,9 +556,14 @@ compute_element_indices_and_refinements(
     const std::vector<std::string>& block_grid_names) {
   // Computes the refinements and indieces for all the elements in a given block
   // when given the grid names for that particular block. This function CANNOT
-  // be given all the gridnames across the whole domain.
+  // be given all the gridnames across the whole domain, only for the one block.
+  // Returns a std::pair where the first entry contains the all the indices for
+  // all elements in a block and the second entry contains all the refinements
+  // in every dimension of every element within the block.
 
   std::vector<std::array<size_t, SpatialDim>> indices = {};
+
+  // some string indexing gymnastics
   size_t grid_points_previous_start_position;
   size_t grid_points_start_position;
   size_t grid_points_end_position;
@@ -589,10 +594,13 @@ compute_element_indices_and_refinements(
     // std::cout << indices_of_element[0] << indices_of_element[1]
     //           << indices_of_element[2] << '\n';
 
+    // pushes back the all indices for an element to the "indices" vector.
     indices.push_back(indices_of_element);
   }
 
   std::vector<std::array<size_t, SpatialDim>> h_ref = {};
+
+  // more string indexing gymnastics
   size_t h_ref_previous_start_position;
   size_t h_ref_start_position;
   size_t h_ref_end_position;
@@ -612,6 +620,7 @@ compute_element_indices_and_refinements(
       h_ref_of_element[j] = current_element_h_ref;
       h_ref_previous_start_position = h_ref_start_position;
     }
+    // pushes back the all indices for an element to the "h_ref" vector.
     h_ref.push_back(h_ref_of_element);
 
     // std::cout << h_ref_of_element[0] << h_ref_of_element[1]
@@ -656,12 +665,14 @@ Mesh<SpatialDim> compute_element_mesh(
     const std::vector<Spectral::Basis>& element_bases,
     const std::vector<size_t>& element_extents,
     const std::vector<Spectral::Quadrature>& element_quadratures) {
-  // COMPUTES THE ELEMENT MESH FOR ONE ELEMENT
+  // COMPUTES THE ELEMENT MESH FOR ONE ELEMENT. Takes in the bases, extents, and
+  // quadratures for that one element of interest.
 
   std::array<Spectral::Basis, SpatialDim> element_bases_array;
   std::array<Spectral::Quadrature, SpatialDim> element_quadratures_array;
   std::array<size_t, SpatialDim> element_extents_array;
 
+  // need to recast the vectors to std::arrays for the mesh constructor
   std::copy_n(element_bases.begin(), SpatialDim, element_bases_array.begin());
   std::copy_n(element_extents.begin(), SpatialDim,
               element_extents_array.begin());
@@ -670,7 +681,7 @@ Mesh<SpatialDim> compute_element_mesh(
   Mesh<SpatialDim> element_mesh{element_extents_array, element_bases_array,
                                 element_quadratures_array};
 
-  std::cout << element_mesh.number_of_grid_points() << '\n';
+  // std::cout << element_mesh.number_of_grid_points() << '\n';
 
   return element_mesh;
 }
@@ -678,7 +689,8 @@ Mesh<SpatialDim> compute_element_mesh(
 template <size_t SpatialDim>
 std::vector<std::array<double, SpatialDim>> compute_element_logical_coordinates(
     const Mesh<SpatialDim>& element_mesh) {
-  // COMPUTES THE ELCS OF ONE ELEMENT
+  // COMPUTES THE ELCS OF ONE ELEMENT. Only needs to take in the element mesh of
+  // that one element
 
   // std::cout << "ELCS!" << '\n';
 
@@ -691,8 +703,9 @@ std::vector<std::array<double, SpatialDim>> compute_element_logical_coordinates(
     for (size_t j = 0; j < SpatialDim; ++j) {
       grid_point_coordinates[j] = element_logical_coordinates_tensor.get(j)[i];
     }
-    std::cout << grid_point_coordinates[0] << ", " << grid_point_coordinates[1]
-              << ", " << grid_point_coordinates[2] << '\n';
+    // std::cout << grid_point_coordinates[0] << ", " <<
+    // grid_point_coordinates[1]
+    //           << ", " << grid_point_coordinates[2] << '\n';
     element_logical_coordinates.push_back(grid_point_coordinates);
   }
 
@@ -701,7 +714,8 @@ std::vector<std::array<double, SpatialDim>> compute_element_logical_coordinates(
 
 bool share_endpoints(const SegmentId& segment_id_1,
                      const SegmentId& segment_id_2) {
-  // returns true if touches
+  // returns true if segment_id_1 and segment_id_2 touch in any way (including
+  // overlapping). Otherwise returns false
   bool touches = false;
   double upper_1 = segment_id_1.endpoint(Side::Upper);
   double lower_1 = segment_id_1.endpoint(Side::Lower);
@@ -720,8 +734,10 @@ template <size_t SpatialDim>
 std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
     std::vector<std::array<SegmentId, SpatialDim>>& elements_in_block) {
-  // identifies all neighbors(face to face, edge, and corner)
-  // std::cout << "NEIGHBORS!" << '\n';
+  // identifies all neighbors(face to face, edge, and corner) in one big vector.
+  // This does not differentiate between types of neightbors, just that they are
+  // neighbors. Takes in the element of interest and the rest of the elements in
+  // the block in the form of SegmentIds.
 
   // remove the element_of_interest from the list of neighbors
   for (size_t i = 0; i < elements_in_block.size(); ++i) {
@@ -735,7 +751,8 @@ std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
   for (size_t i = 0; i < SpatialDim; ++i) {
     SegmentId current_segment_id = element_of_interest[i];
     // std::cout << "size: " << elements_in_block.size() << '\n';
-    // lambda identifies the indicies of the non neighbors in not_neighbors
+    // lambda identifies the indicies of the non neighbors and stores it in
+    // not_neighbors
     auto not_neighbors = std::remove_if(
         elements_in_block.begin(), elements_in_block.end(),
         [&i, &current_segment_id](
@@ -761,8 +778,10 @@ template <size_t SpatialDim>
 std::array<int, SpatialDim> identify_neighbor_direction(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
     const std::array<SegmentId, SpatialDim>& element_to_compare) {
+  // identifies the normal vector of the element to compare relative to the
+  // element of interest. It is known that element_to_compare is a neighbor
+
   std::array<int, SpatialDim> normal_vector;
-  // needs to be 0's
   for (size_t i = 0; i < SpatialDim; ++i) {
     if (element_of_interest[i].endpoint(Side::Upper) ==
         element_to_compare[i].endpoint(Side::Lower)) {
@@ -792,12 +811,13 @@ identify_neighbor_type(
     std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors) {
   // outputs a std::array of length spatialdim of elements. First are face
   // neighbors, then edge neighbors, then corner neighbors. Then it also returns
-  // a std::array of the normal vector of each neighbor as well in a std::pair
+  // a std::array of the normal vector of each neighbor as well in a std::pair.
+  // Takes in the element of interest and the list of all neighbors.
+
   std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
                                    std::array<int, SpatialDim>>>,
              SpatialDim>
       neighbors_by_type;
-
   std::vector<
       std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>>
       face_neighbors = {};
@@ -850,7 +870,7 @@ identify_neighbor_type(
     if (i == 2) {
       std::cout << "corner neighbors: " << '\n';
     }
-    std::cout << neighbors_by_type[i].size();
+    std::cout << neighbors_by_type[i].size() << '\n';
     for (size_t j = 0; j < neighbors_by_type[i].size(); ++j) {
       std::cout << "normal vector: " << neighbors_by_type[i][j].second[0]
                 << ", " << neighbors_by_type[i][j].second[1] << ", "
@@ -868,6 +888,9 @@ generate_block_logical_coordinates_for_element(
         element_logical_coordinates,
     const std::pair<std::array<size_t, SpatialDim>,
                     std::array<size_t, SpatialDim>>& indices_and_refinements) {
+  // Genreates the BLC of a particular element given that elements ELC and it's
+  // indices and refinements as defined from its grid name.
+
   // std::cout << element_logical_coordinates.size() << '\n';
 
   std::vector<std::array<double, SpatialDim>> BLC_for_element;
@@ -901,6 +924,46 @@ generate_block_logical_coordinates_for_element(
   }
 
   return BLC_for_element;
+}
+
+template <size_t SpatialDim>
+size_t grid_names_position(const std::array<SegmentId, SpatialDim>& element,
+                           const std::vector<std::string>& block_grid_names) {
+  std::string element_grid_name =
+      block_grid_names[0].substr(0, block_grid_names[0].find('(', 0) + 1);
+  std::cout << element_grid_name << '\n';
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    element_grid_name += "L" + std::to_string(element[i].refinement_level()) +
+                         "I" + std::to_string(element[i].index());
+    if (i < SpatialDim - 1) {
+      element_grid_name += ",";
+    } else if (i == SpatialDim - 1) {
+      element_grid_name += ")]";
+    }
+  }
+  std::cout << element_grid_name << '\n';
+  for (size_t i = 0; i < block_grid_names.size(); ++i) {
+    if (element_grid_name == block_grid_names[i]) {
+      std::cout << "GN INDEX: " << i << '\n';
+      return i;
+    }
+  }
+  ERROR("Found no grid named '" + element_grid_name + "'.");
+}
+
+template <size_t SpatialDim>
+bool neighbor_directions_and_BLC(
+    const std::array<SegmentId, SpatialDim>& element_of_interest,
+    std::vector<std::array<SegmentId, SpatialDim>>& elements_in_block,
+    const std::pair<std::vector<std::array<size_t, SpatialDim>>,
+                    std::vector<std::array<size_t, SpatialDim>>>
+        indices_and_refinements) {
+  std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
+                                   std::array<int, SpatialDim>>>,
+             SpatialDim>
+      neighbors_by_type =
+          identify_neighbor_type(element_of_interest, elements_in_block);
+  return true;
 }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
@@ -1733,6 +1796,33 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
           element_logical_coordinates,                       \
       const std::pair<std::array<size_t, DIM(data)>,         \
                       std::array<size_t, DIM(data)>>&        \
+          indices_and_refinements);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                           \
+  template size_t grid_names_position<DIM(data)>(      \
+      const std::array<SegmentId, DIM(data)>& element, \
+      const std::vector<std::string>& block_grid_names);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                            \
+  template bool neighbor_directions_and_BLC<DIM(data)>(                 \
+      const std::array<SegmentId, DIM(data)>& element_of_interest,      \
+      std::vector<std::array<SegmentId, DIM(data)>>& elements_in_block, \
+      const std::pair<std::vector<std::array<size_t, DIM(data)>>,       \
+                      std::vector<std::array<size_t, DIM(data)>>>       \
           indices_and_refinements);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
