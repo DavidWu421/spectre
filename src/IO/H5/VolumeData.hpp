@@ -310,15 +310,15 @@ generate_block_logical_coordinates_for_element(
                     std::array<size_t, SpatialDim>>& indices_and_refinements);
 
 template <size_t SpatialDim>
-size_t grid_names_position(const std::array<SegmentId, SpatialDim>& element,
-                           const std::vector<std::string>& block_grid_names);
+std::string grid_name_reconstruction(
+    const std::array<SegmentId, SpatialDim>& element,
+    const std::vector<std::string>& block_grid_names);
 
 template <size_t SpatialDim>
 bool neighbor_directions_and_BLC(
-    const std::array<SegmentId, SpatialDim>& element_of_interest,
-    std::vector<std::array<SegmentId, SpatialDim>>& elements_in_block,
-    const std::pair<std::vector<std::array<size_t, SpatialDim>>,
-                    std::vector<std::array<size_t, SpatialDim>>>
-        indices_and_refinements);
+    const std::vector<std::string>& grid_names,
+    const std::vector<std::vector<size_t>>& extents,
+    const std::vector<std::vector<Spectral::Basis>>& bases,
+    const std::vector<std::vector<Spectral::Quadrature>>& quadratures);
 
 }  // namespace h5
