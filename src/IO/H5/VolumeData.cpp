@@ -661,32 +661,6 @@ std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
 }
 
 template <size_t SpatialDim>
-Mesh<SpatialDim> compute_element_mesh(
-    const std::vector<Spectral::Basis>& element_bases,
-    const std::vector<size_t>& element_extents,
-    const std::vector<Spectral::Quadrature>& element_quadratures) {
-  // COMPUTES THE ELEMENT MESH FOR ONE ELEMENT. Takes in the bases, extents, and
-  // quadratures for that one element of interest.
-
-  std::array<Spectral::Basis, SpatialDim> element_bases_array;
-  std::array<Spectral::Quadrature, SpatialDim> element_quadratures_array;
-  std::array<size_t, SpatialDim> element_extents_array;
-
-  // need to recast the vectors to std::arrays for the mesh constructor
-  std::copy_n(element_bases.begin(), SpatialDim, element_bases_array.begin());
-  std::copy_n(element_extents.begin(), SpatialDim,
-              element_extents_array.begin());
-  std::copy_n(element_quadratures.begin(), SpatialDim,
-              element_quadratures_array.begin());
-  Mesh<SpatialDim> element_mesh{element_extents_array, element_bases_array,
-                                element_quadratures_array};
-
-  // std::cout << element_mesh.number_of_grid_points() << '\n';
-
-  return element_mesh;
-}
-
-template <size_t SpatialDim>
 std::vector<std::array<double, SpatialDim>> compute_element_logical_coordinates(
     const Mesh<SpatialDim>& element_mesh) {
   // COMPUTES THE ELCS OF ONE ELEMENT. Only needs to take in the element mesh of
@@ -801,7 +775,7 @@ std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
            SpatialDim>
 identify_neighbor_type(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
-    std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors) {
+    const std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors) {
   // outputs a std::array of length spatialdim of elements. First are face
   // neighbors, then edge neighbors, then corner neighbors. Then it also returns
   // a std::array of the normal vector of each neighbor as well in a std::pair.
@@ -946,39 +920,42 @@ bool neighbor_directions_and_BLC(
     const std::vector<std::vector<Spectral::Quadrature>>& quadratures) {
   // std::pair of the indices(first entry) and refinements (second entry) for
   // the entire block.
-  std::pair<std::vector<std::array<size_t, SpatialDim>>,
-            std::vector<std::array<size_t, SpatialDim>>>
+  const std::pair<std::vector<std::array<size_t, SpatialDim>>,
+                  std::vector<std::array<size_t, SpatialDim>>>
       indices_and_refinements =
           compute_element_indices_and_refinements<SpatialDim>(grid_names);
 
   // Segment Ids for every element in the block. Each element has SpatialDim
   // SegmentIds, one for each dimension.
-  std::vector<std::array<SegmentId, SpatialDim>> segment_ids =
+  const std::vector<std::array<SegmentId, SpatialDim>> segment_ids =
       create_SegmentIds<SpatialDim>(indices_and_refinements);
 
   std::cout << "SEGID SIZE: " << segment_ids.size() << '\n';
 
   for (size_t i = 0; i < segment_ids.size(); ++i) {
+    // Need to copy segment_ids to a new container since it will be altered.
+    std::vector<std::array<SegmentId, SpatialDim>> neighbor_segment_ids =
+        segment_ids;
     std::cout << "SEGID ITERATION: " << i << '\n';
     // Identify the element I want to find the neighbors of.
     std::array<SegmentId, SpatialDim> element_of_interest = segment_ids[i];
     // Identifies all the neighbors of the element of interest. Does NOT sort
     // them by type (face, edge, corner).
-    std::vector<std::array<SegmentId, SpatialDim>> all_neighbors =
-        identify_all_neighbors<SpatialDim>(element_of_interest, segment_ids);
-    std::cout << "ALL NEIGHBORS SIZE" << all_neighbors.size() << '\n';
+    const std::vector<std::array<SegmentId, SpatialDim>> all_neighbors =
+        identify_all_neighbors<SpatialDim>(element_of_interest,
+                                           neighbor_segment_ids);
     // Gives all neighbors sorted by type. First is face, then edge, then
     // corner.
-    std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
-                                     std::array<int, SpatialDim>>>,
-               SpatialDim>
+    const std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
+                                           std::array<int, SpatialDim>>>,
+                     SpatialDim>
         neighbors_by_type = identify_neighbor_type<SpatialDim>(
             element_of_interest, all_neighbors);
 
     // Need the grid name of the element of interest to reverse search it in the
     // vector of all grid names to get its position in that vector
     std::cout << "Element of interest grid name: " << '\n';
-    std::string element_of_interest_grid_name =
+    const std::string element_of_interest_grid_name =
         grid_name_reconstruction<SpatialDim>(element_of_interest, grid_names);
     // Find the index of the element of interest within grid_names so we can
     // find it later in extents, bases, and quadratures
@@ -991,21 +968,22 @@ bool neighbor_directions_and_BLC(
 
     // Construct the mesh for the element of interest. mesh_for_grid finds the
     // index internally for us.
-    Mesh<SpatialDim> element_of_interest_mesh = mesh_for_grid<SpatialDim>(
+    const Mesh<SpatialDim> element_of_interest_mesh = mesh_for_grid<SpatialDim>(
         element_of_interest_grid_name, grid_names, extents, bases, quadratures);
     // Compute the element logical coordinates for the element of interest
-    std::vector<std::array<double, SpatialDim>> element_of_interest_ELCs =
+    const std::vector<std::array<double, SpatialDim>> element_of_interest_ELCs =
         compute_element_logical_coordinates<SpatialDim>(
             element_of_interest_mesh);
     // Access the indices and refinements for the element of interest and change
     // container type.
-    std::pair<std::array<size_t, SpatialDim>, std::array<size_t, SpatialDim>>
+    const std::pair<std::array<size_t, SpatialDim>,
+                    std::array<size_t, SpatialDim>>
         element_of_interest_indices_and_refinements{
             indices_and_refinements.first[element_of_interest_index],
             indices_and_refinements.second[element_of_interest_index]};
     // Compute BLC for the element of interest
     std::cout << "Element of interest BLCs: " << '\n';
-    std::vector<std::array<double, SpatialDim>> element_of_interest_BLCs =
+    const std::vector<std::array<double, SpatialDim>> element_of_interest_BLCs =
         generate_block_logical_coordinates_for_element<SpatialDim>(
             element_of_interest_ELCs,
             element_of_interest_indices_and_refinements);
@@ -1019,13 +997,14 @@ bool neighbor_directions_and_BLC(
       for (size_t k = 0; k < neighbors_by_type[j].size(); ++k) {
         // Reconstruct the grid name for the neighboring element
         std::cout << "Neighbor grid name: " << '\n';
-        std::string neighbor_grid_name = grid_name_reconstruction<SpatialDim>(
-            neighbors_by_type[j][k].first, grid_names);
+        const std::string neighbor_grid_name =
+            grid_name_reconstruction<SpatialDim>(neighbors_by_type[j][k].first,
+                                                 grid_names);
         // Construct the mesh for the neighboring element
-        Mesh<SpatialDim> neighbor_mesh = mesh_for_grid<SpatialDim>(
+        const Mesh<SpatialDim> neighbor_mesh = mesh_for_grid<SpatialDim>(
             neighbor_grid_name, grid_names, extents, bases, quadratures);
         // Compute the ELC's of the neighboring element
-        std::vector<std::array<double, SpatialDim>> neighbor_ELCs =
+        const std::vector<std::array<double, SpatialDim>> neighbor_ELCs =
             compute_element_logical_coordinates<SpatialDim>(neighbor_mesh);
         // Find the index of the neighbor element within grid_names so we can
         // find it later in extents, bases, and quadratures
@@ -1036,8 +1015,9 @@ bool neighbor_directions_and_BLC(
           }
         }
 
-        // Access the normal vector
-        std::array<int, SpatialDim> neighbor_normal_vector =
+        // Access the normal vector. Lives inside neighbors_by_type
+        // datastructure
+        const std::array<int, SpatialDim> neighbor_normal_vector =
             neighbors_by_type[j][k].second;
         std::cout << "Normal vector: " << neighbors_by_type[j][k].second[0]
                   << ", " << neighbors_by_type[j][k].second[1] << ", "
@@ -1045,14 +1025,14 @@ bool neighbor_directions_and_BLC(
 
         // Access the indices and refinements for the element of interest and
         // change container type.
-        std::pair<std::array<size_t, SpatialDim>,
-                  std::array<size_t, SpatialDim>>
+        const std::pair<std::array<size_t, SpatialDim>,
+                        std::array<size_t, SpatialDim>>
             neighbor_indices_and_refinements{
                 indices_and_refinements.first[neighbor_index],
                 indices_and_refinements.second[neighbor_index]};
         // Compute BLC for the neighbor element
         std::cout << "Neighbor BLCs: " << '\n';
-        std::vector<std::array<double, SpatialDim>> neighbor_BLCs =
+        const std::vector<std::array<double, SpatialDim>> neighbor_BLCs =
             generate_block_logical_coordinates_for_element<SpatialDim>(
                 neighbor_ELCs, neighbor_indices_and_refinements);
       }
@@ -1818,19 +1798,6 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
 #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 
-#define INSTANTIATE(_, data)                                    \
-  template Mesh<DIM(data)> h5::compute_element_mesh<DIM(data)>( \
-      const std::vector<Spectral::Basis>& element_bases,        \
-      const std::vector<size_t>& element_extents,               \
-      const std::vector<Spectral::Quadrature>& element_quadratures);
-
-GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
-
-#undef INSTANTIATE
-#undef DIM
-
-#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
-
 #define INSTANTIATE(_, data)                          \
   template std::vector<std::array<double, DIM(data)>> \
   h5::compute_element_logical_coordinates<DIM(data)>( \
@@ -1875,7 +1842,7 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
                       DIM(data)>                                              \
   h5::identify_neighbor_type<DIM(data)>(                                      \
       const std::array<SegmentId, DIM(data)>& element_of_interest,            \
-      std::vector<std::array<SegmentId, DIM(data)>>& all_neighbors);
+      const std::vector<std::array<SegmentId, DIM(data)>>& all_neighbors);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 

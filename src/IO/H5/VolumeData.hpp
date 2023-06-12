@@ -271,12 +271,6 @@ std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
         indices_and_refinements);
 
 template <size_t SpatialDim>
-Mesh<SpatialDim> compute_element_mesh(
-    const std::vector<Spectral::Basis>& element_bases,
-    const std::vector<size_t>& element_extents,
-    const std::vector<Spectral::Quadrature>& element_quadratures);
-
-template <size_t SpatialDim>
 std::vector<std::array<double, SpatialDim>> compute_element_logical_coordinates(
     const Mesh<SpatialDim>& element_mesh);
 
@@ -299,7 +293,7 @@ std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
            SpatialDim>
 identify_neighbor_type(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
-    std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors);
+    const std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors);
 
 template <size_t SpatialDim>
 std::vector<std::array<double, SpatialDim>>

@@ -658,40 +658,44 @@ void test_compute_element_indices_and_refinements_and_etc_and_ELCs() {
   //     "[B0,(L1I0,L1I0,L1I1)]",         "[B0,(L1I1,L1I0,L1I1)]",
   //     "[B0,(L1I0,L1I1,L1I1)]",         "[B0,(L1I1,L3241I112,L13I91)]"};
 
+  // std::vector<std::string> test_grid_names{
+  //     "[B0,(L1I0,L1I0,L1I0)]", "[B0,(L1I1,L1I0,L1I0)]",
+  //     "[B0,(L1I0,L1I1,L1I0)]",
+  //     "[B0,(L1I0,L1I0,L1I1)]", "[B0,(L1I1,L1I1,L1I0)]",
+  //     "[B0,(L1I0,L1I1,L1I1)]",
+  //     "[B0,(L1I1,L1I0,L1I1)]", "[B0,(L1I1,L1I1,L1I1)]"};
+  // std::cout << test_grid_names << "\n";
+
   std::vector<std::string> test_grid_names{
-      "[B0,(L1I0,L1I0,L1I0)]", "[B0,(L1I1,L1I0,L1I0)]", "[B0,(L1I0,L1I1,L1I0)]",
-      "[B0,(L1I0,L1I0,L1I1)]", "[B0,(L1I1,L1I1,L1I0)]", "[B0,(L1I0,L1I1,L1I1)]",
-      "[B0,(L1I1,L1I0,L1I1)]", "[B0,(L1I1,L1I1,L1I1)]"};
+      "[B0,(L2I0,L2I0,L2I0)]", "[B0,(L2I1,L2I0,L2I0)]",
+      "[B0,(L2I0,L2I1,L2I0)]", "[B0,(L2I1,L2I1,L2I0)]",
+      "[B0,(L2I0,L2I0,L2I1)]", "[B0,(L2I1,L2I0,L2I1)]",
+      "[B0,(L2I0,L2I1,L2I1)]", "[B0,(L2I1,L2I1,L2I1)]",
+      "[B0,(L1I1,L1I0,L1I0)]", "[B0,(L1I0,L1I1,L1I0)]",
+      "[B0,(L1I0,L1I0,L1I1)]", "[B0,(L1I1,L1I1,L1I0)]",
+      "[B0,(L1I0,L1I1,L1I1)]", "[B0,(L1I1,L1I0,L1I1)]",
+      "[B0,(L1I1,L1I1,L1I1)]"};
   std::cout << test_grid_names << "\n";
 
-  // // h5::compute_element_indices_and_refinements<SpatialDim>(grid_names);
-  // std::pair<std::vector<std::array<size_t, SpatialDim>>,
-  //           std::vector<std::array<size_t, SpatialDim>>>
-  //     indices_and_refinements =
-  //         h5::compute_element_indices_and_refinements<SpatialDim>(
-  //             test_grid_names);
+  std::vector<size_t> refined_element_extents = {2, 2, 2};
+  std::vector<Spectral::Basis> refined_element_bases = {
+      Spectral::Basis::Legendre, Spectral::Basis::Legendre,
+      Spectral::Basis::Legendre};
+  std::vector<Spectral::Quadrature> refined_element_quadratures = {
+      Spectral::Quadrature::Gauss, Spectral::Quadrature::Gauss,
+      Spectral::Quadrature::Gauss};
 
-  // h5::create_SegmentIds<SpatialDim>(indices_and_refinements);
-  // auto elements = h5::create_SegmentIds<SpatialDim>(indices_and_refinements);
-  // auto element_of_interest = elements[7];
-  // auto first_element_mesh = h5::compute_element_mesh<SpatialDim>(
-  //     bases[7], extents[7], quadratures[7]);
+  extents.erase(extents.begin());
+  bases.erase(bases.begin());
+  quadratures.erase(quadratures.begin());
+  for (size_t i = 0; i < 8; ++i) {
+    extents.insert(extents.begin(), refined_element_extents);
+    bases.insert(bases.begin(), refined_element_bases);
+    quadratures.insert(quadratures.begin(), refined_element_quadratures);
+  }
+  std::cout << test_grid_names.size() << ", " << extents.size() << ", "
+            << bases.size() << ", " << quadratures.size() << '\n';
 
-  // auto first_element_ELC =
-  //    h5::compute_element_logical_coordinates<SpatialDim>(first_element_mesh);
-
-  // auto all_neighbors =
-  //     h5::identify_all_neighbors<SpatialDim>(element_of_interest, elements);
-  // h5::identify_neighbor_type<SpatialDim>(element_of_interest, all_neighbors);
-  // h5::identify_neighbor_direction<SpatialDim>(element_of_interest,
-  //                                             all_neighbors[0]);
-  // std::pair<std::array<size_t, SpatialDim>, std::array<size_t, SpatialDim>>
-  //     element_indices_and_refinements{indices_and_refinements.first[7],
-  //                                     indices_and_refinements.second[7]};
-  // h5::generate_block_logical_coordinates_for_element<SpatialDim>(
-  //     first_element_ELC, element_indices_and_refinements);
-  // h5::grid_name_reconstruction<SpatialDim>(element_of_interest,
-  // test_grid_names);
   h5::neighbor_directions_and_BLC<SpatialDim>(test_grid_names, extents, bases,
                                               quadratures);
 }
