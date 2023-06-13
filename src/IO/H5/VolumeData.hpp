@@ -264,7 +264,7 @@ std::pair<std::vector<std::array<size_t, SpatialDim>>,
 element_indices_and_refinements(const std::vector<std::string>& all_grid_names);
 
 template <size_t SpatialDim>
-std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
+std::vector<std::array<SegmentId, SpatialDim>> create_segment_ids(
     const std::pair<std::vector<std::array<size_t, SpatialDim>>,
                     std::vector<std::array<size_t, SpatialDim>>>&
         indices_and_refinements);

@@ -562,15 +562,24 @@ element_indices_and_refinements(
   // in every dimension of every element within the block.
 
   std::vector<std::array<size_t, SpatialDim>> indices = {};
+  std::vector<std::array<size_t, SpatialDim>> h_ref = {};
 
   // some string indexing gymnastics
   size_t grid_points_previous_start_position;
   size_t grid_points_start_position;
   size_t grid_points_end_position;
+
+  size_t h_ref_previous_start_position;
+  size_t h_ref_start_position;
+  size_t h_ref_end_position;
+
   for (size_t i = 0; i < all_grid_names.size(); ++i) {
     std::array<size_t, SpatialDim> indices_of_element = {};
     std::string element_grid_name = all_grid_names[i];
     grid_points_previous_start_position = 0;
+
+    std::array<size_t, SpatialDim> h_ref_of_element = {};
+    h_ref_previous_start_position = 0;
     for (size_t j = 0; j < SpatialDim; ++j) {
       grid_points_start_position =
           element_grid_name.find('I', grid_points_previous_start_position + 1);
@@ -589,26 +598,7 @@ element_indices_and_refinements(
       element_index_substring >> current_element_index;
       indices_of_element[j] = current_element_index;
       grid_points_previous_start_position = grid_points_start_position;
-    }
 
-    // std::cout << indices_of_element[0] << indices_of_element[1]
-    //           << indices_of_element[2] << '\n';
-
-    // pushes back the all indices for an element to the "indices" vector.
-    indices.push_back(indices_of_element);
-  }
-
-  std::vector<std::array<size_t, SpatialDim>> h_ref = {};
-
-  // more string indexing gymnastics
-  size_t h_ref_previous_start_position;
-  size_t h_ref_start_position;
-  size_t h_ref_end_position;
-  for (size_t i = 0; i < all_grid_names.size(); ++i) {
-    std::array<size_t, SpatialDim> h_ref_of_element = {};
-    std::string element_grid_name = all_grid_names[i];
-    h_ref_previous_start_position = 0;
-    for (size_t j = 0; j < SpatialDim; ++j) {
       h_ref_start_position =
           element_grid_name.find('L', h_ref_previous_start_position + 1);
       h_ref_end_position = element_grid_name.find('I', h_ref_start_position);
@@ -620,18 +610,23 @@ element_indices_and_refinements(
       h_ref_of_element[j] = current_element_h_ref;
       h_ref_previous_start_position = h_ref_start_position;
     }
-    // pushes back the all indices for an element to the "h_ref" vector.
-    h_ref.push_back(h_ref_of_element);
+
+    // std::cout << indices_of_element[0] << indices_of_element[1]
+    //           << indices_of_element[2] << '\n';
 
     // std::cout << h_ref_of_element[0] << h_ref_of_element[1]
     //           << h_ref_of_element[2] << '\n';
+
+    // pushes back the all indices for an element to the "indices" vector.
+    indices.push_back(indices_of_element);
+    h_ref.push_back(h_ref_of_element);
   }
 
   return std::pair{indices, h_ref};
 }
 
 template <size_t SpatialDim>
-std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
+std::vector<std::array<SegmentId, SpatialDim>> create_segment_ids(
     const std::pair<std::vector<std::array<size_t, SpatialDim>>,
                     std::vector<std::array<size_t, SpatialDim>>>&
         indices_and_refinements) {
@@ -780,24 +775,10 @@ sort_neighbors_by_type(
   // neighbors, then edge neighbors, then corner neighbors. Then it also returns
   // a std::array of the normal vector of each neighbor as well in a std::pair.
   // Takes in the element of interest and the list of all neighbors.
-
   std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
                                    std::array<int, SpatialDim>>>,
              SpatialDim>
       neighbors_by_type;
-  std::vector<
-      std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>>
-      face_neighbors = {};
-  // if (SpatialDim >= 2) {
-  std::vector<
-      std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>>
-      edge_neighbors = {};
-  // }
-  // if (SpatialDim == 3) {
-  std::vector<
-      std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>>
-      corner_neighbors = {};
-  // }
 
   for (size_t i = 0; i < all_neighbors.size(); ++i) {
     std::array<int, SpatialDim> normal_vector =
@@ -809,21 +790,14 @@ sort_neighbors_by_type(
       normal_value += abs(normal_vector[j]);
     }
     if (normal_value == 1) {
-      face_neighbors.push_back(neighbor_with_direction);
+      neighbors_by_type[0].push_back(neighbor_with_direction);
     }
-    if (SpatialDim >= 2 && normal_value == 2) {
-      edge_neighbors.push_back(neighbor_with_direction);
+    if (normal_value == 2) {
+      neighbors_by_type[1].push_back(neighbor_with_direction);
     }
-    if (SpatialDim == 3 && normal_value == 3) {
-      corner_neighbors.push_back(neighbor_with_direction);
+    if (normal_value == 3) {
+      neighbors_by_type[2].push_back(neighbor_with_direction);
     }
-  }
-  neighbors_by_type[0] = face_neighbors;
-  if (SpatialDim >= 2) {
-    neighbors_by_type[1] = edge_neighbors;
-  }
-  if (SpatialDim == 3) {
-    neighbors_by_type[2] = corner_neighbors;
   }
 
   // print statements to print out everything to check
@@ -928,7 +902,7 @@ bool extend_connectivity(
   // Segment Ids for every element in the block. Each element has SpatialDim
   // SegmentIds, one for each dimension.
   const std::vector<std::array<SegmentId, SpatialDim>> segment_ids =
-      create_SegmentIds<SpatialDim>(indices_and_refinements);
+      create_segment_ids<SpatialDim>(indices_and_refinements);
 
   for (size_t i = 0; i < segment_ids.size(); ++i) {
     // Need to copy segment_ids to a new container since it will be altered.
@@ -1016,8 +990,8 @@ bool extend_connectivity(
 
         // Access the normal vector. Lives inside neighbors_by_type
         // datastructure
-        const std::array<int, SpatialDim> neighbor_normal_vector =
-            neighbors_by_type[j][k].second;
+        // const std::array<int, SpatialDim> neighbor_normal_vector =
+        //     neighbors_by_type[j][k].second;
         std::cout << "Normal vector: " << neighbors_by_type[j][k].second[0]
                   << ", " << neighbors_by_type[j][k].second[1] << ", "
                   << neighbors_by_type[j][k].second[2] << '\n';
@@ -1785,7 +1759,7 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
 #define INSTANTIATE(_, data)                                       \
   template std::vector<std::array<SegmentId, DIM(data)>>           \
-  h5::create_SegmentIds<DIM(data)>(                                \
+  h5::create_segment_ids<DIM(data)>(                               \
       const std::pair<std::vector<std::array<size_t, DIM(data)>>,  \
                       std::vector<std::array<size_t, DIM(data)>>>& \
           indices_and_refinements);

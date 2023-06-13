@@ -696,9 +696,6 @@ void test_element_indices_and_refinements_and_etc_and_ELCs() {
     bases.insert(bases.begin(), refined_element_bases);
     quadratures.insert(quadratures.begin(), refined_element_quadratures);
   }
-  std::cout << test_grid_names.size() << ", " << extents.size() << ", "
-            << bases.size() << ", " << quadratures.size() << '\n';
-
   h5::extend_connectivity<SpatialDim>(test_grid_names, extents, bases,
                                       quadratures);
 
