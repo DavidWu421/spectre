@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Domain/Structure/SegmentId.hpp"
 #include "IO/H5/Object.hpp"
 #include "IO/H5/OpenGroup.hpp"
 #include "IO/H5/TensorData.hpp"
@@ -114,12 +115,6 @@ class VolumeData : public h5::Object {
       const std::optional<std::vector<char>>& serialized_domain = std::nullopt,
       const std::optional<std::vector<char>>& serialized_functions_of_time =
           std::nullopt);
-
-  /// Overwrites the current connectivity dataset with a new one. This new
-  /// connectivity dataset builds connectivity within each block in the domain
-  /// for each observation id in a list of observation id's
-  template <size_t SpatialDim>
-  void extend_connectivity_data(const std::vector<size_t>& observation_ids);
 
   void write_tensor_component(const size_t observation_id,
                               const std::string& component_name,
@@ -252,6 +247,13 @@ std::pair<size_t, size_t> offset_and_length_for_grid(
 template <size_t Dim>
 Mesh<Dim> mesh_for_grid(
     const std::string& grid_name,
+    const std::vector<std::string>& all_grid_names,
+    const std::vector<std::vector<size_t>>& all_extents,
+    const std::vector<std::vector<Spectral::Basis>>& all_bases,
+    const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
+
+template <size_t SpatialDim>
+bool extend_connectivity(
     const std::vector<std::string>& all_grid_names,
     const std::vector<std::vector<size_t>>& all_extents,
     const std::vector<std::vector<Spectral::Basis>>& all_bases,

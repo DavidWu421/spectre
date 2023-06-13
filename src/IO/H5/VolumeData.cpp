@@ -17,8 +17,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include <iostream>
+
 #include "DataStructures/DataVector.hpp"
 #include "DataStructures/Tensor/Tensor.hpp"
+#include "Domain/Structure/SegmentId.hpp"
 #include "IO/Connectivity.hpp"
 #include "IO/H5/AccessType.hpp"
 #include "IO/H5/Header.hpp"
@@ -165,6 +168,7 @@ void append_element_extents_and_connectivity(
     }
   }
 }
+
 // Given a std::vector of grid_names, computes the number of blocks that exist
 // and also returns a std::vector of block numbers that is a one-to-one mapping
 // to each element in grid_names. The returned tuple is of the form
@@ -297,208 +301,347 @@ compute_block_level_properties(
                     expected_number_of_grid_points, h_ref_array};
 }
 
-// Returns a std::vector<std::array> where each std::array represents the
-// coordinates of a grid point in the block logical frame, and the entire
-// std::vector is the list of all such grid points
+// _____________________BEGIN DAVID'S STUFF____________________________________
+
 template <size_t SpatialDim>
-std::vector<std::array<double, SpatialDim>> generate_block_logical_coordinates(
+std::pair<std::vector<std::array<size_t, SpatialDim>>,
+          std::vector<std::array<size_t, SpatialDim>>>
+element_indices_and_refinements(
+    const std::vector<std::string>& all_grid_names) {
+  // Computes the refinements and indieces for all the elements in a given block
+  // when given the grid names for that particular block. This function CANNOT
+  // be given all the gridnames across the whole domain, only for the one block.
+  // Returns a std::pair where the first entry contains the all the indices for
+  // all elements in a block and the second entry contains all the refinements
+  // in every dimension of every element within the block.
+
+  std::vector<std::array<size_t, SpatialDim>> indices = {};
+  std::vector<std::array<size_t, SpatialDim>> h_ref = {};
+
+  // some string indexing gymnastics
+  size_t grid_points_previous_start_position;
+  size_t grid_points_start_position;
+  size_t grid_points_end_position;
+
+  size_t h_ref_previous_start_position;
+  size_t h_ref_start_position;
+  size_t h_ref_end_position;
+
+  for (size_t i = 0; i < all_grid_names.size(); ++i) {
+    std::array<size_t, SpatialDim> indices_of_element = {};
+    std::string element_grid_name = all_grid_names[i];
+    grid_points_previous_start_position = 0;
+
+    std::array<size_t, SpatialDim> h_ref_of_element = {};
+    h_ref_previous_start_position = 0;
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      grid_points_start_position =
+          element_grid_name.find('I', grid_points_previous_start_position + 1);
+      if (j == SpatialDim - 1) {
+        grid_points_end_position =
+            element_grid_name.find(')', grid_points_start_position);
+      } else {
+        grid_points_end_position =
+            element_grid_name.find(',', grid_points_start_position);
+      }
+
+      std::stringstream element_index_substring(element_grid_name.substr(
+          grid_points_start_position + 1,
+          grid_points_end_position - grid_points_start_position - 1));
+      size_t current_element_index;
+      element_index_substring >> current_element_index;
+      indices_of_element[j] = current_element_index;
+      grid_points_previous_start_position = grid_points_start_position;
+
+      h_ref_start_position =
+          element_grid_name.find('L', h_ref_previous_start_position + 1);
+      h_ref_end_position = element_grid_name.find('I', h_ref_start_position);
+      std::stringstream element_grid_name_substring(element_grid_name.substr(
+          h_ref_start_position + 1,
+          h_ref_end_position - h_ref_start_position - 1));
+      size_t current_element_h_ref;
+      element_grid_name_substring >> current_element_h_ref;
+      h_ref_of_element[j] = current_element_h_ref;
+      h_ref_previous_start_position = h_ref_start_position;
+    }
+
+    // std::cout << indices_of_element[0] << indices_of_element[1]
+    //           << indices_of_element[2] << '\n';
+
+    // std::cout << h_ref_of_element[0] << h_ref_of_element[1]
+    //           << h_ref_of_element[2] << '\n';
+
+    // pushes back the all indices for an element to the "indices" vector.
+    indices.push_back(indices_of_element);
+    h_ref.push_back(h_ref_of_element);
+  }
+
+  return std::pair{indices, h_ref};
+}
+
+template <size_t SpatialDim>
+std::vector<std::array<SegmentId, SpatialDim>> create_segment_ids(
+    const std::pair<std::vector<std::array<size_t, SpatialDim>>,
+                    std::vector<std::array<size_t, SpatialDim>>>&
+        indices_and_refinements) {
+  // Creates a std::vector of the segmentIds of each element in the block that
+  // is the same block as the block for which the refinement and indices are
+  // calculated.
+  std::vector<std::array<SegmentId, SpatialDim>> segment_ids = {};
+  std::array<SegmentId, SpatialDim> segment_ids_of_current_element;
+  for (size_t i = 0; i < indices_and_refinements.first.size(); ++i) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      SegmentId current_segment_id(indices_and_refinements.second[i][j],
+                                   indices_and_refinements.first[i][j]);
+      segment_ids_of_current_element[j] = current_segment_id;
+    }
+    segment_ids.push_back(segment_ids_of_current_element);
+  }
+
+  // std::cout << "SEGID midpoints!!!" << '\n';
+
+  // for (size_t i = 0; i < indices_and_refinements.first.size(); ++i) {
+  //   for (size_t j = 0; j < SpatialDim; ++j) {
+  //     std::cout << segment_ids[i][j].midpoint() << '\n';
+  //   }
+  // }
+
+  return segment_ids;
+}
+
+template <size_t SpatialDim>
+std::vector<std::array<double, SpatialDim>> element_logical_coordinates(
+    const Mesh<SpatialDim>& element_mesh) {
+  // COMPUTES THE ELCS OF ONE ELEMENT. Only needs to take in the element mesh of
+  // that one element
+
+  // std::cout << "ELCS!" << '\n';
+
+  std::array<double, SpatialDim> grid_point_coordinates;
+
+  std::vector<std::array<double, SpatialDim>> element_logical_coordinates = {};
+  auto element_logical_coordinates_tensor = logical_coordinates(element_mesh);
+  for (size_t i = 0; i < element_logical_coordinates_tensor.get(0).size();
+       ++i) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      grid_point_coordinates[j] = element_logical_coordinates_tensor.get(j)[i];
+    }
+    // std::cout << grid_point_coordinates[0] << ", " <<
+    // grid_point_coordinates[1]
+    //           << ", " << grid_point_coordinates[2] << '\n';
+    element_logical_coordinates.push_back(grid_point_coordinates);
+  }
+
+  return element_logical_coordinates;
+}
+
+bool share_endpoints(const SegmentId& segment_id_1,
+                     const SegmentId& segment_id_2) {
+  // returns true if segment_id_1 and segment_id_2 touch in any way (including
+  // overlapping). Otherwise returns false
+  bool touches = false;
+  double upper_1 = segment_id_1.endpoint(Side::Upper);
+  double lower_1 = segment_id_1.endpoint(Side::Lower);
+  double upper_2 = segment_id_2.endpoint(Side::Upper);
+  double lower_2 = segment_id_2.endpoint(Side::Lower);
+
+  if (upper_1 == upper_2 || upper_1 == lower_2 || lower_1 == upper_2 ||
+      lower_1 == lower_2) {
+    touches = true;
+  }
+
+  return touches;
+}
+
+template <size_t SpatialDim>
+std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
+    const std::array<SegmentId, SpatialDim>& element_of_interest,
+    std::vector<std::array<SegmentId, SpatialDim>>& all_elements) {
+  // identifies all neighbors(face to face, edge, and corner) in one big vector.
+  // This does not differentiate between types of neightbors, just that they are
+  // neighbors. Takes in the element of interest and the rest of the elements in
+  // the block in the form of SegmentIds. This function also identifies the
+  // element of interest as it's own neighbor. This is removed in
+  // "neighbor_direction".
+
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    SegmentId current_segment_id = element_of_interest[i];
+    // std::cout << "size: " << all_elements.size() << '\n';
+    // lambda identifies the indicies of the non neighbors and stores it in
+    // not_neighbors
+    auto not_neighbors = std::remove_if(
+        all_elements.begin(), all_elements.end(),
+        [&i, &current_segment_id](
+            std::array<SegmentId, SpatialDim> element_to_compare) {
+          // only need touches since if they overlap, they also touch
+          bool touches =
+              share_endpoints(current_segment_id, element_to_compare[i]);
+          if (touches == true) {
+            return false;
+          } else {
+            return true;
+          }
+        });
+    // removes all std::array<SegmentId, SpatialDim> that aren't neighbors
+    all_elements.erase(not_neighbors, all_elements.end());
+  }
+
+  // std::cout << "size: " << all_elements.size() << '\n';
+  return all_elements;
+}
+
+template <size_t SpatialDim>
+std::array<int, SpatialDim> neighbor_direction(
+    const std::array<SegmentId, SpatialDim>& element_of_interest,
+    const std::array<SegmentId, SpatialDim>& element_to_compare) {
+  // identifies the normal vector of the element to compare relative to the
+  // element of interest. It is known that element_to_compare is a neighbor
+
+  std::array<int, SpatialDim> normal_vector;
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    if (element_of_interest[i].endpoint(Side::Upper) ==
+        element_to_compare[i].endpoint(Side::Lower)) {
+      normal_vector[i] = 1;
+    }
+    if (element_of_interest[i].endpoint(Side::Lower) ==
+        element_to_compare[i].endpoint(Side::Upper)) {
+      normal_vector[i] = -1;
+    }
+    if (element_of_interest[i].endpoint(Side::Upper) ==
+            element_to_compare[i].endpoint(Side::Upper) ||
+        element_of_interest[i].endpoint(Side::Lower) ==
+            element_to_compare[i].endpoint(Side::Lower)) {
+      normal_vector[i] = 0;
+    }
+  }
+
+  return normal_vector;
+}
+
+template <size_t SpatialDim>
+std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
+                                 std::array<int, SpatialDim>>>,
+           SpatialDim>
+sort_neighbors_by_type(
+    const std::array<SegmentId, SpatialDim>& element_of_interest,
+    const std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors) {
+  // outputs a std::array of length spatialdim of elements. First are face
+  // neighbors, then edge neighbors, then corner neighbors. Then it also returns
+  // a std::array of the normal vector of each neighbor as well in a std::pair.
+  // Takes in the element of interest and the list of all neighbors.
+  std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
+                                   std::array<int, SpatialDim>>>,
+             SpatialDim>
+      neighbors_by_type;
+
+  for (size_t i = 0; i < all_neighbors.size(); ++i) {
+    std::array<int, SpatialDim> normal_vector =
+        neighbor_direction(element_of_interest, all_neighbors[i]);
+    std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>
+        neighbor_with_direction{all_neighbors[i], normal_vector};
+    int normal_value = 0;
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      normal_value += abs(normal_vector[j]);
+    }
+    if (normal_value == 1) {
+      neighbors_by_type[0].push_back(neighbor_with_direction);
+    }
+    if (normal_value == 2) {
+      neighbors_by_type[1].push_back(neighbor_with_direction);
+    }
+    if (normal_value == 3) {
+      neighbors_by_type[2].push_back(neighbor_with_direction);
+    }
+  }
+
+  // print statements to print out everything to check
+  // for (size_t i = 0; i < SpatialDim; ++i) {
+  //   if (i == 0) {
+  //     std::cout << "face neighbors: " << '\n';
+  //   }
+  //   if (i == 1) {
+  //     std::cout << "edge neighbors: " << '\n';
+  //   }
+  //   if (i == 2) {
+  //     std::cout << "corner neighbors: " << '\n';
+  //   }
+  //   std::cout << neighbors_by_type[i].size() << '\n';
+  //   for (size_t j = 0; j < neighbors_by_type[i].size(); ++j) {
+  //     std::cout << "normal vector: " << neighbors_by_type[i][j].second[0]
+  //               << ", " << neighbors_by_type[i][j].second[1] << ", "
+  //               << neighbors_by_type[i][j].second[2] << '\n';
+  //   }
+  // }
+
+  return neighbors_by_type;
+}
+
+template <size_t SpatialDim>
+std::vector<std::array<double, SpatialDim>>
+block_logical_coordinates_for_element(
     const std::vector<std::array<double, SpatialDim>>&
         element_logical_coordinates,
-    const std::string& grid_name,
-    const std::array<int, SpatialDim>& h_refinement_array) {
-  size_t grid_points_x_start_position = 0;
-  std::vector<std::array<double, SpatialDim>> block_logical_coordinates;
-  block_logical_coordinates.reserve(element_logical_coordinates.size());
-  std::vector<double> number_of_elements_each_direction;
-  number_of_elements_each_direction.reserve(SpatialDim);
-  std::vector<double> shift_each_direction;
-  shift_each_direction.reserve(SpatialDim);
+    const std::pair<std::array<size_t, SpatialDim>,
+                    std::array<size_t, SpatialDim>>& indices_and_refinements) {
+  // Genreates the BLC of a particular element given that elements ELC and it's
+  // indices and refinements as defined from its grid name.
 
-  // Computes number_of_elements_each_direction, element_index, and
-  // shift_each_direction to each be used in the computation of the grid point
-  // coordinates in the block logical frame
-  for (size_t i = 0; i < SpatialDim; ++i) {
-    double number_of_elements = pow(2, gsl::at(h_refinement_array, i));
-    number_of_elements_each_direction.push_back(number_of_elements);
-    size_t grid_points_start_position =
-        grid_name.find('I', grid_points_x_start_position + 1);
-    size_t grid_points_end_position =
-        grid_name.find(',', grid_points_start_position);
-    if (i == SpatialDim) {
-      grid_points_end_position =
-          grid_name.find(')', grid_points_start_position);
-    }
-    int element_index = std::stoi(grid_name.substr(
-        grid_points_start_position + 1,
-        grid_points_end_position - grid_points_start_position - 1));
-    double shift = (-1 + (2 * element_index + 1) / number_of_elements);
-    shift_each_direction.push_back(shift);
-    grid_points_x_start_position = grid_points_start_position;
-  }
+  // std::cout << element_logical_coordinates.size() << '\n';
 
-  // Computes the coordinates for each grid point in the block logical frame
+  std::vector<std::array<double, SpatialDim>> BLC_for_element;
   for (size_t i = 0; i < element_logical_coordinates.size(); ++i) {
-    std::array<double, SpatialDim> grid_point_coordinate = {};
-    for (size_t j = 0; j < grid_point_coordinate.size(); ++j) {
-      gsl::at(grid_point_coordinate, j) =
-          1. / number_of_elements_each_direction[j] *
-              element_logical_coordinates[i][j] +
-          shift_each_direction[j];
+    std::array<double, SpatialDim> BLC_of_gridpoint;
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      int number_of_elements = pow(2, indices_and_refinements.second[j]);
+      double shift =
+          -1 + (2 * static_cast<double>(indices_and_refinements.first[j]) + 1) /
+                   static_cast<double>(number_of_elements);
+      BLC_of_gridpoint[j] =
+          element_logical_coordinates[i][j] / number_of_elements + shift;
     }
-    block_logical_coordinates.push_back(grid_point_coordinate);
+    BLC_for_element.push_back(BLC_of_gridpoint);
   }
 
-  return block_logical_coordinates;
-}
+  // sort the BLC by increasing z, then y, then x
+  std::sort(BLC_for_element.begin(), BLC_for_element.end(),
+            [](const auto& lhs, const auto& rhs) {
+              return std::lexicographical_compare(lhs.begin(), lhs.end(),
+                                                  rhs.begin(), rhs.end());
+            });
 
-// Given a std::vector<double> where the elements are ordered in ascending order
-// a new std::vector<double> is generated where it is a list of the original
-// values in ascending order without duplicates
-// Example: [1,2,2,3] -> order() -> [1,2,3]
-std::vector<double> order_sorted_elements(
-    const std::vector<double>& sorted_elements) {
-  std::vector<double> ordered_elements;
-  ordered_elements.push_back(sorted_elements[0]);
-  for (size_t i = 1; i < sorted_elements.size(); ++i) {
-    if (sorted_elements[i] != ordered_elements.end()[-1]) {
-      ordered_elements.push_back(sorted_elements[i]);
-    }
+  // print statements to test
+  for (size_t i = 0; i < BLC_for_element.size(); ++i) {
+    // std::cout << "ELC: " << element_logical_coordinates[i][0] << ", "
+    //           << element_logical_coordinates[i][1] << ", "
+    //           << element_logical_coordinates[i][2] << '\n';
+    std::cout << "BLC: " << BLC_for_element[i][0] << ", "
+              << BLC_for_element[i][1] << ", " << BLC_for_element[i][2] << '\n';
   }
-  return ordered_elements;
+
+  return BLC_for_element;
 }
 
-// Returns a std::vector of std::pair where each std::pair is
-// composed of a number for the block a given grid point resides inside of, as
-// well as the grid point itself as a std::array. Generates the connectivity by
-// connecting grid points (in the block logical frame) to form either
-// hexahedrons, quadrilaterals, or lines depending on the SpatialDim. The
-// function iteratively generates all possible shapes with all of a grid point's
-// nearest neighbors. Example: Consider a 4x4 grid of evenly spaces points.
-// build_connectivity_by_hexahedron generates connectivity that forms 9 sqaures.
 template <size_t SpatialDim>
-std::vector<std::pair<size_t, std::array<double, SpatialDim>>>
-build_connectivity_by_hexahedron(const std::vector<double>& sorted_x,
-                                 const std::vector<double>& sorted_y,
-                                 const std::vector<double>& sorted_z,
-                                 const size_t& block_number) {
-  std::vector<std::pair<size_t, std::array<double, SpatialDim>>>
-      connectivity_of_keys;
-
-  std::array<double, SpatialDim> point_one = {};
-  std::array<double, SpatialDim> point_two = {};
-  [[maybe_unused]] std::array<double, SpatialDim> point_three = {};
-  [[maybe_unused]] std::array<double, SpatialDim> point_four = {};
-  [[maybe_unused]] std::array<double, SpatialDim> point_five = {};
-  [[maybe_unused]] std::array<double, SpatialDim> point_six = {};
-  [[maybe_unused]] std::array<double, SpatialDim> point_seven = {};
-  [[maybe_unused]] std::array<double, SpatialDim> point_eight = {};
-
-  // Algorithm for connecting grid points. Extended by if statments to account
-  // for 1D, 2D, and 3D
-  for (size_t i = 0; i < sorted_x.size() - 1; ++i) {
-    point_one[0] = sorted_x[i];
-    point_two[0] = sorted_x[i + 1];
-    // 2D or 3D
-    if constexpr (SpatialDim > 1) {
-      point_three[0] = sorted_x[i + 1];
-      point_four[0] = sorted_x[i];
-      for (size_t j = 0; j < sorted_y.size() - 1; ++j) {
-        point_one[1] = sorted_y[j];
-        point_two[1] = sorted_y[j];
-        point_three[1] = sorted_y[j + 1];
-        point_four[1] = sorted_y[j + 1];
-        // 3D
-        if constexpr (SpatialDim == 3) {
-          point_five[0] = sorted_x[i];
-          point_six[0] = sorted_x[i + 1];
-          point_seven[0] = sorted_x[i + 1];
-          point_eight[0] = sorted_x[i];
-          point_five[1] = sorted_y[j];
-          point_six[1] = sorted_y[j];
-          point_seven[1] = sorted_y[j + 1];
-          point_eight[1] = sorted_y[j + 1];
-          for (size_t k = 0; k < sorted_z.size() - 1; ++k) {
-            point_one[2] = sorted_z[k];
-            point_two[2] = sorted_z[k];
-            point_three[2] = sorted_z[k];
-            point_four[2] = sorted_z[k];
-            point_five[2] = sorted_z[k + 1];
-            point_six[2] = sorted_z[k + 1];
-            point_seven[2] = sorted_z[k + 1];
-            point_eight[2] = sorted_z[k + 1];
-
-            connectivity_of_keys.insert(
-                connectivity_of_keys.end(),
-                {std::make_pair(block_number, point_one),
-                 std::make_pair(block_number, point_two),
-                 std::make_pair(block_number, point_three),
-                 std::make_pair(block_number, point_four),
-                 std::make_pair(block_number, point_five),
-                 std::make_pair(block_number, point_six),
-                 std::make_pair(block_number, point_seven),
-                 std::make_pair(block_number, point_eight)});
-          }
-        } else {
-          connectivity_of_keys.insert(
-              connectivity_of_keys.end(),
-              {std::make_pair(block_number, point_one),
-               std::make_pair(block_number, point_two),
-               std::make_pair(block_number, point_three),
-               std::make_pair(block_number, point_four)});
-        }
-      }
-    } else {
-      connectivity_of_keys.insert(connectivity_of_keys.end(),
-                                  {std::make_pair(block_number, point_one),
-                                   std::make_pair(block_number, point_two)});
-    }
-  }
-  return connectivity_of_keys;
-}
-
-// Returns the output of build_connectivity_by_hexahedron after feeding in
-// specially prepared inputs. The output is the new connectivity
-template <size_t SpatialDim>
-std::vector<std::pair<size_t, std::array<double, SpatialDim>>>
-generate_new_connectivity(
-    std::vector<std::array<double, SpatialDim>>& block_logical_coordinates,
-    const size_t& block_number) {
-  std::vector<std::vector<double>> unsorted_coordinates;
-  unsorted_coordinates.reserve(SpatialDim);
-
-  // Takes the block_logical_coordinates and splits them up into a unique
-  // std::vector for x, y, and z. These three std::vector are then stored inside
-  // of a std::vector unsorted_coordinates
+std::string grid_name_reconstruction(
+    const std::array<SegmentId, SpatialDim>& element,
+    const std::vector<std::string>& all_grid_names) {
+  std::string element_grid_name =
+      all_grid_names[0].substr(0, all_grid_names[0].find('(', 0) + 1);
   for (size_t i = 0; i < SpatialDim; ++i) {
-    std::vector<double> coordinates_by_direction;
-    coordinates_by_direction.reserve(block_logical_coordinates.size());
-    for (size_t j = 0; j < block_logical_coordinates.size(); ++j) {
-      coordinates_by_direction.push_back(block_logical_coordinates[j][i]);
-    }
-    unsorted_coordinates.push_back(coordinates_by_direction);
-  }
-
-  // Creates ordered_x, ordered_y, and ordered_z by first sorting
-  // unsorted_coordinates x, y, and z, then passing these into
-  // order_sorted_elements()
-  sort(unsorted_coordinates[0].begin(), unsorted_coordinates[0].end());
-  std::vector<double> ordered_x =
-      order_sorted_elements(unsorted_coordinates[0]);
-  std::vector<double> ordered_y = {0.0};
-  std::vector<double> ordered_z = {0.0};
-
-  if (SpatialDim > 1) {
-    sort(unsorted_coordinates[1].begin(), unsorted_coordinates[1].end());
-    ordered_y = order_sorted_elements(unsorted_coordinates[1]);
-    if (SpatialDim == 3) {
-      sort(unsorted_coordinates[2].begin(), unsorted_coordinates[2].end());
-      ordered_z = order_sorted_elements(unsorted_coordinates[2]);
+    element_grid_name += "L" + std::to_string(element[i].refinement_level()) +
+                         "I" + std::to_string(element[i].index());
+    if (i < SpatialDim - 1) {
+      element_grid_name += ",";
+    } else if (i == SpatialDim - 1) {
+      element_grid_name += ")]";
     }
   }
-
-  return build_connectivity_by_hexahedron<SpatialDim>(ordered_x, ordered_y,
-                                                      ordered_z, block_number);
+  std::cout << element_grid_name << '\n';
+  return element_grid_name;
 }
+
+// ____________________________END DAVID'S STUFF_______________________________
+
 }  // namespace
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
@@ -709,134 +852,131 @@ void VolumeData::write_volume_data(
 
 // Write new connectivity connections given a std::vector of observation ids
 template <size_t SpatialDim>
-void VolumeData::extend_connectivity_data(
-    const std::vector<size_t>& observation_ids) {
-  for (const size_t& obs_id : observation_ids) {
-    auto grid_names = get_grid_names(obs_id);
-    auto extents = get_extents(obs_id);
-    auto bases = get_bases(obs_id);
-    auto quadratures = get_quadratures(obs_id);
+bool extend_connectivity(
+    const std::vector<std::string>& all_grid_names,
+    const std::vector<std::vector<size_t>>& all_extents,
+    const std::vector<std::vector<Spectral::Basis>>& all_bases,
+    const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures) {
+  // std::pair of the indices(first entry) and refinements (second entry) for
+  // the entire block.
+  const std::pair<std::vector<std::array<size_t, SpatialDim>>,
+                  std::vector<std::array<size_t, SpatialDim>>>
+      indices_and_refinements =
+          element_indices_and_refinements<SpatialDim>(all_grid_names);
 
-    auto [number_of_blocks, block_number_for_each_element,
-          sorted_element_indices] = compute_and_organize_block_info(grid_names);
+  // Segment Ids for every element in the block. Each element has SpatialDim
+  // SegmentIds, one for each dimension.
+  const std::vector<std::array<SegmentId, SpatialDim>> segment_ids =
+      create_segment_ids<SpatialDim>(indices_and_refinements);
 
-    const auto sorted_grid_names =
-        sort_by_block(sorted_element_indices, grid_names);
-    const auto sorted_extents = sort_by_block(sorted_element_indices, extents);
+  for (size_t i = 0; i < segment_ids.size(); ++i) {
+    // Need to copy segment_ids to a new container since it will be altered.
+    std::vector<std::array<SegmentId, SpatialDim>> neighbor_segment_ids =
+        segment_ids;
+    // Identify the element I want to find the neighbors of.
+    std::array<SegmentId, SpatialDim> element_of_interest = segment_ids[i];
+    // Identifies all the neighbors of the element of interest. Does NOT sort
+    // them by type (face, edge, corner).
+    const std::vector<std::array<SegmentId, SpatialDim>> all_neighbors =
+        identify_all_neighbors<SpatialDim>(element_of_interest,
+                                           neighbor_segment_ids);
+    // Gives all neighbors sorted by type. First is face, then edge, then
+    // corner.
+    const std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
+                                           std::array<int, SpatialDim>>>,
+                     SpatialDim>
+        neighbors_by_type = sort_neighbors_by_type<SpatialDim>(
+            element_of_interest, all_neighbors);
 
-    size_t total_expected_connectivity = 0;
-    std::vector<int> expected_grid_points_per_block;
-    expected_grid_points_per_block.reserve(number_of_blocks);
-    std::vector<std::array<int, SpatialDim>> h_ref_per_block;
-    h_ref_per_block.reserve(number_of_blocks);
+    // Need the grid name of the element of interest to reverse search it in the
+    // vector of all grid names to get its position in that vector
+    std::cout << "Element of interest grid name: " << '\n';
+    // grid_name_reconstruction requires all_grid_names for the block number.
+    // Can be changed later when we loop over the blocks to take in the index of
+    // the block.
+    const std::string element_of_interest_grid_name =
+        grid_name_reconstruction<SpatialDim>(element_of_interest,
+                                             all_grid_names);
+    // Find the index of the element of interest within grid_names so we can
+    // find it later in extents, bases, and quadratures
+    const auto found_element_grid_name =
+        alg::find(all_grid_names, element_of_interest_grid_name);
+    size_t element_of_interest_index = static_cast<size_t>(
+        std::distance(all_grid_names.begin(), found_element_grid_name));
 
-    // Loop over blocks
-    for (size_t j = 0; j < number_of_blocks; ++j) {
-      auto [expected_connectivity_length, expected_number_of_grid_points,
-            h_ref_array] =
-          compute_block_level_properties<SpatialDim>(sorted_grid_names[j],
-                                                     sorted_extents[j]);
-      total_expected_connectivity += expected_connectivity_length;
-      expected_grid_points_per_block.push_back(expected_number_of_grid_points);
-      h_ref_per_block.push_back(h_ref_array);
-    }
+    // Construct the mesh for the element of interest. mesh_for_grid finds the
+    // index internally for us.
+    const Mesh<SpatialDim> element_of_interest_mesh =
+        mesh_for_grid<SpatialDim>(element_of_interest_grid_name, all_grid_names,
+                                  all_extents, all_bases, all_quadratures);
+    // Compute the element logical coordinates for the element of interest
+    const std::vector<std::array<double, SpatialDim>> element_of_interest_ELCs =
+        element_logical_coordinates<SpatialDim>(element_of_interest_mesh);
+    // Access the indices and refinements for the element of interest and change
+    // container type. Was orginally a std::pair<std::vector<...>,
+    // std::vector<...>>. We index into the vectors and reconstruct the pair.
+    const std::pair<std::array<size_t, SpatialDim>,
+                    std::array<size_t, SpatialDim>>
+        element_of_interest_indices_and_refinements{
+            indices_and_refinements.first[element_of_interest_index],
+            indices_and_refinements.second[element_of_interest_index]};
+    // Compute BLC for the element of interest
+    std::cout << "Element of interest BLCs: " << '\n';
+    const std::vector<std::array<double, SpatialDim>> element_of_interest_BLCs =
+        block_logical_coordinates_for_element<SpatialDim>(
+            element_of_interest_ELCs,
+            element_of_interest_indices_and_refinements);
 
-    // Create an unordered_map to be used to associate a grid point's block
-    // number and coordinates as an array to the its label
-    // (B#, grid_point_coord_array) -> grid_point_number
-    std::unordered_map<
-        std::pair<size_t, std::array<double, SpatialDim>>, size_t,
-        boost::hash<std::pair<size_t, std::array<double, SpatialDim>>>>
-        block_and_grid_point_map;
+    // Need to loop over all the neighbors. First by neighbor type then the
+    // number of neighbor in each type.
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      std::cout << "NEIGHBOR TYPE: " << j
+                << ", # OF NEIGHBORS OF TYPE: " << neighbors_by_type[j].size()
+                << '\n';
+      for (size_t k = 0; k < neighbors_by_type[j].size(); ++k) {
+        // Reconstruct the grid name for the neighboring element
+        std::cout << "Neighbor grid name: " << '\n';
+        const std::string neighbor_grid_name =
+            grid_name_reconstruction<SpatialDim>(neighbors_by_type[j][k].first,
+                                                 all_grid_names);
+        // Construct the mesh for the neighboring element
+        const Mesh<SpatialDim> neighbor_mesh =
+            mesh_for_grid<SpatialDim>(neighbor_grid_name, all_grid_names,
+                                      all_extents, all_bases, all_quadratures);
+        // Compute the ELC's of the neighboring element
+        const std::vector<std::array<double, SpatialDim>> neighbor_ELCs =
+            element_logical_coordinates<SpatialDim>(neighbor_mesh);
+        // Find the index of the neighbor element within grid_names so we can
+        // find it later in extents, bases, and quadratures
+        const auto found_neighbor_grid_name =
+            alg::find(all_grid_names, neighbor_grid_name);
+        size_t neighbor_index = static_cast<size_t>(
+            std::distance(all_grid_names.begin(), found_neighbor_grid_name));
 
-    // Create the sorted container for the grid points, which is a
-    // std::vector<std::vector>. The length of the first layer has length equal
-    // to the number of blocks, as each subvector corresponds to one of the
-    // blocks. Each subvector is of length equal to the number of grid points
-    // in the corresponding block, as we are storing an array of the block
-    // logical coordinates for each grid point.
-    std::vector<std::vector<std::array<double, SpatialDim>>>
-        block_logical_coordinates_by_block;
-    block_logical_coordinates_by_block.reserve(number_of_blocks);
+        // Access the normal vector. Lives inside neighbors_by_type
+        // datastructure
+        // const std::array<int, SpatialDim> neighbor_normal_vector =
+        //     neighbors_by_type[j][k].second;
+        std::cout << "Normal vector: " << neighbors_by_type[j][k].second[0]
+                  << ", " << neighbors_by_type[j][k].second[1] << ", "
+                  << neighbors_by_type[j][k].second[2] << '\n';
 
-    // Reserve size for the subvectors
-    for (const auto& sorted_block_index : sorted_element_indices) {
-      std::vector<std::array<double, SpatialDim>> sizing_vector;
-      sizing_vector.reserve(sorted_block_index.size());
-      block_logical_coordinates_by_block.push_back(sizing_vector);
-    }
-
-    // Counter for the grid points when filling the unordered_map. Grid points
-    // are labelled by positive integers, so we are numbering them with this
-    // counter as we associate them to the key (B#, grid_point_coord_array) in
-    // the unordered map.
-    size_t grid_point_number = 0;
-
-    for (size_t element_index = 0;
-         element_index < block_number_for_each_element.size();
-         ++element_index) {
-      auto element_mesh = mesh_for_grid<SpatialDim>(
-          grid_names[element_index], grid_names, extents, bases, quadratures);
-      auto element_logical_coordinates_tensor =
-          logical_coordinates(element_mesh);
-
-      std::vector<std::array<double, SpatialDim>> element_logical_coordinates;
-      element_logical_coordinates.reserve(
-          element_logical_coordinates_tensor.get(0).size());
-
-      for (size_t k = 0; k < element_logical_coordinates_tensor.get(0).size();
-           ++k) {
-        std::array<double, SpatialDim> logical_coords_element_increment = {};
-        for (size_t l = 0; l < SpatialDim; l++) {
-          gsl::at(logical_coords_element_increment, l) =
-              element_logical_coordinates_tensor.get(l)[k];
-        }
-        element_logical_coordinates.push_back(logical_coords_element_increment);
+        // Access the indices and refinements for the element of interest and
+        // change container type.
+        const std::pair<std::array<size_t, SpatialDim>,
+                        std::array<size_t, SpatialDim>>
+            neighbor_indices_and_refinements{
+                indices_and_refinements.first[neighbor_index],
+                indices_and_refinements.second[neighbor_index]};
+        // Compute BLC for the neighbor element
+        std::cout << "Neighbor BLCs: " << '\n';
+        const std::vector<std::array<double, SpatialDim>> neighbor_BLCs =
+            block_logical_coordinates_for_element<SpatialDim>(
+                neighbor_ELCs, neighbor_indices_and_refinements);
       }
-
-      auto block_logical_coordinates =
-          generate_block_logical_coordinates<SpatialDim>(
-              element_logical_coordinates, grid_names[element_index],
-              h_ref_per_block[block_number_for_each_element[element_index]]);
-
-      // Stores (B#, grid_point_coord_array) -> grid_point_number in an
-      // unordered_map and grid_point_coord_array by block
-      for (size_t k = 0; k < block_logical_coordinates.size(); ++k) {
-        std::pair<size_t, std::array<double, SpatialDim>> block_and_grid_point(
-            block_number_for_each_element[element_index],
-            block_logical_coordinates[k]);
-        block_and_grid_point_map.insert(
-            std::pair<std::pair<size_t, std::array<double, SpatialDim>>,
-                      size_t>(block_and_grid_point, grid_point_number));
-        grid_point_number += 1;
-
-        block_logical_coordinates_by_block
-            [block_number_for_each_element[element_index]]
-                .push_back(block_logical_coordinates[k]);
-      }
     }
-
-    std::vector<int> new_connectivity;
-    new_connectivity.reserve(total_expected_connectivity);
-
-    for (size_t j = 0; j < block_logical_coordinates_by_block.size(); ++j) {
-      auto block_number = j;
-      auto connectivity_of_keys = generate_new_connectivity<SpatialDim>(
-          block_logical_coordinates_by_block[j], block_number);
-      for (const std::pair<size_t, std::array<double, SpatialDim>>& it :
-           connectivity_of_keys) {
-        new_connectivity.push_back(block_and_grid_point_map[it]);
-      }
-    }
-
-    // Deletes the existing connectivity and replaces it with the new one
-    const std::string path = "ObservationId" + std::to_string(obs_id);
-    detail::OpenGroup observation_group(volume_data_group_.id(), path,
-                                        AccessType::ReadWrite);
-    const hid_t group_id = observation_group.id();
-    delete_connectivity(group_id);
-    write_connectivity(group_id, new_connectivity);
   }
+  return true;
 }
 
 void VolumeData::write_tensor_component(
@@ -1215,19 +1355,14 @@ Mesh<Dim> mesh_for_grid(
 
 #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 
-#define INSTANTIATE(_, data)                                         \
-  template void h5::VolumeData::extend_connectivity_data<DIM(data)>( \
-      const std::vector<size_t>& observation_ids);                   \
-  template Mesh<DIM(data)> mesh_for_grid(                            \
-      const std::string& grid_name,                                  \
-      const std::vector<std::string>& all_grid_names,                \
-      const std::vector<std::vector<size_t>>& all_extents,           \
-      const std::vector<std::vector<Spectral::Basis>>& all_bases,    \
+#define INSTANTIATE(_, data)                                      \
+  template bool extend_connectivity<DIM(data)>(                   \
+      const std::vector<std::string>& all_grid_names,             \
+      const std::vector<std::vector<size_t>>& all_extents,        \
+      const std::vector<std::vector<Spectral::Basis>>& all_bases, \
       const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
 #undef INSTANTIATE
-#undef DIM
-
 }  // namespace h5
