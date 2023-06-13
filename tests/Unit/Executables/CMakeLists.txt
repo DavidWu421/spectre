@@ -51,14 +51,6 @@ add_test(
    && rm ${_CONNECTIVITY_OUTPUT}.xmf"
   )
 set_standalone_test_properties("Unit.Executables.ExtendConnectivity")
-set_tests_properties(
-    "Unit.Executables.ExtendConnectivity"
-    PROPERTIES
-    LABELS "standalone;unit")
-add_dependencies(
-  unit-tests
-  ExtendConnectivity
-  )
 add_dependencies(
   test-executables
   ExtendConnectivity
