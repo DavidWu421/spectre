@@ -930,13 +930,10 @@ bool extend_connectivity(
   const std::vector<std::array<SegmentId, SpatialDim>> segment_ids =
       create_SegmentIds<SpatialDim>(indices_and_refinements);
 
-  std::cout << "SEGID SIZE: " << segment_ids.size() << '\n';
-
   for (size_t i = 0; i < segment_ids.size(); ++i) {
     // Need to copy segment_ids to a new container since it will be altered.
     std::vector<std::array<SegmentId, SpatialDim>> neighbor_segment_ids =
         segment_ids;
-    std::cout << "SEGID ITERATION: " << i << '\n';
     // Identify the element I want to find the neighbors of.
     std::array<SegmentId, SpatialDim> element_of_interest = segment_ids[i];
     // Identifies all the neighbors of the element of interest. Does NOT sort
@@ -955,17 +952,18 @@ bool extend_connectivity(
     // Need the grid name of the element of interest to reverse search it in the
     // vector of all grid names to get its position in that vector
     std::cout << "Element of interest grid name: " << '\n';
+    // grid_name_reconstruction requires all_grid_names for the block number.
+    // Can be changed later when we loop over the blocks to take in the index of
+    // the block.
     const std::string element_of_interest_grid_name =
         grid_name_reconstruction<SpatialDim>(element_of_interest,
                                              all_grid_names);
     // Find the index of the element of interest within grid_names so we can
     // find it later in extents, bases, and quadratures
-    size_t element_of_interest_index;
-    for (size_t j = 0; j < all_grid_names.size(); ++j) {
-      if (element_of_interest_grid_name == all_grid_names[j]) {
-        element_of_interest_index = j;
-      }
-    }
+    const auto found_element_grid_name =
+        alg::find(all_grid_names, element_of_interest_grid_name);
+    size_t element_of_interest_index = static_cast<size_t>(
+        std::distance(all_grid_names.begin(), found_element_grid_name));
 
     // Construct the mesh for the element of interest. mesh_for_grid finds the
     // index internally for us.
@@ -976,7 +974,8 @@ bool extend_connectivity(
     const std::vector<std::array<double, SpatialDim>> element_of_interest_ELCs =
         element_logical_coordinates<SpatialDim>(element_of_interest_mesh);
     // Access the indices and refinements for the element of interest and change
-    // container type.
+    // container type. Was orginally a std::pair<std::vector<...>,
+    // std::vector<...>>. We index into the vectors and reconstruct the pair.
     const std::pair<std::array<size_t, SpatialDim>,
                     std::array<size_t, SpatialDim>>
         element_of_interest_indices_and_refinements{
@@ -991,7 +990,7 @@ bool extend_connectivity(
 
     // Need to loop over all the neighbors. First by neighbor type then the
     // number of neighbor in each type.
-    for (size_t j = 0; j < neighbors_by_type.size(); ++j) {
+    for (size_t j = 0; j < SpatialDim; ++j) {
       std::cout << "NEIGHBOR TYPE: " << j
                 << ", # OF NEIGHBORS OF TYPE: " << neighbors_by_type[j].size()
                 << '\n';
@@ -1010,12 +1009,10 @@ bool extend_connectivity(
             element_logical_coordinates<SpatialDim>(neighbor_mesh);
         // Find the index of the neighbor element within grid_names so we can
         // find it later in extents, bases, and quadratures
-        size_t neighbor_index;
-        for (size_t l = 0; l < all_grid_names.size(); ++l) {
-          if (neighbor_grid_name == all_grid_names[l]) {
-            neighbor_index = l;
-          }
-        }
+        const auto found_neighbor_grid_name =
+            alg::find(all_grid_names, neighbor_grid_name);
+        size_t neighbor_index = static_cast<size_t>(
+            std::distance(all_grid_names.begin(), found_neighbor_grid_name));
 
         // Access the normal vector. Lives inside neighbors_by_type
         // datastructure

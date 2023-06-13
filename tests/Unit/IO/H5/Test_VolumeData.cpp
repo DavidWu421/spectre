@@ -701,6 +701,10 @@ void test_element_indices_and_refinements_and_etc_and_ELCs() {
 
   h5::extend_connectivity<SpatialDim>(test_grid_names, extents, bases,
                                       quadratures);
+
+  // std::cout << "gridnames: " << grid_names << '\n';
+  // h5::extend_connectivity<SpatialDim>(grid_names, extents, bases,
+  //                                     quadratures);
 }
 
 }  // namespace
@@ -712,6 +716,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   // test_extend_connectivity_data<1>();
   // test_extend_connectivity_data<2>();
   // test_extend_connectivity_data<3>();
+  // test_element_indices_and_refinements_and_etc_and_ELCs<2>();
   test_element_indices_and_refinements_and_etc_and_ELCs<3>();
 
 #ifdef SPECTRE_DEBUG
