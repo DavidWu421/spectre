@@ -261,8 +261,7 @@ Mesh<Dim> mesh_for_grid(
 template <size_t SpatialDim>
 std::pair<std::vector<std::array<size_t, SpatialDim>>,
           std::vector<std::array<size_t, SpatialDim>>>
-compute_element_indices_and_refinements(
-    const std::vector<std::string>& block_grid_names);
+element_indices_and_refinements(const std::vector<std::string>& all_grid_names);
 
 template <size_t SpatialDim>
 std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
@@ -271,7 +270,7 @@ std::vector<std::array<SegmentId, SpatialDim>> create_SegmentIds(
         indices_and_refinements);
 
 template <size_t SpatialDim>
-std::vector<std::array<double, SpatialDim>> compute_element_logical_coordinates(
+std::vector<std::array<double, SpatialDim>> element_logical_coordinates(
     const Mesh<SpatialDim>& element_mesh);
 
 bool share_endpoints(const SegmentId& segment_id_1,
@@ -280,10 +279,10 @@ bool share_endpoints(const SegmentId& segment_id_1,
 template <size_t SpatialDim>
 std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
-    std::vector<std::array<SegmentId, SpatialDim>>& elements_in_block);
+    std::vector<std::array<SegmentId, SpatialDim>>& all_elements);
 
 template <size_t SpatialDim>
-std::array<int, SpatialDim> identify_neighbor_direction(
+std::array<int, SpatialDim> neighbor_direction(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
     const std::array<SegmentId, SpatialDim>& element_to_compare);
 
@@ -291,13 +290,13 @@ template <size_t SpatialDim>
 std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
                                  std::array<int, SpatialDim>>>,
            SpatialDim>
-identify_neighbor_type(
+sort_neighbors_by_type(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
     const std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors);
 
 template <size_t SpatialDim>
 std::vector<std::array<double, SpatialDim>>
-generate_block_logical_coordinates_for_element(
+block_logical_coordinates_for_element(
     const std::vector<std::array<double, SpatialDim>>&
         element_logical_coordinates,
     const std::pair<std::array<size_t, SpatialDim>,
@@ -306,13 +305,13 @@ generate_block_logical_coordinates_for_element(
 template <size_t SpatialDim>
 std::string grid_name_reconstruction(
     const std::array<SegmentId, SpatialDim>& element,
-    const std::vector<std::string>& block_grid_names);
+    const std::vector<std::string>& all_grid_names);
 
 template <size_t SpatialDim>
-bool neighbor_directions_and_BLC(
-    const std::vector<std::string>& grid_names,
-    const std::vector<std::vector<size_t>>& extents,
-    const std::vector<std::vector<Spectral::Basis>>& bases,
-    const std::vector<std::vector<Spectral::Quadrature>>& quadratures);
+bool extend_connectivity(
+    const std::vector<std::string>& all_grid_names,
+    const std::vector<std::vector<size_t>>& all_extents,
+    const std::vector<std::vector<Spectral::Basis>>& all_bases,
+    const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
 
 }  // namespace h5

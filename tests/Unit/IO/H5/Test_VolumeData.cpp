@@ -516,7 +516,7 @@ void test_extend_connectivity_data() {
 }
 
 template <size_t SpatialDim>
-void test_compute_element_indices_and_refinements_and_etc_and_ELCs() {
+void test_element_indices_and_refinements_and_etc_and_ELCs() {
   // Sample volume data
   const std::vector<size_t>& observation_ids{2345};
   const std::vector<double>& observation_values{1.0};
@@ -666,6 +666,9 @@ void test_compute_element_indices_and_refinements_and_etc_and_ELCs() {
   //     "[B0,(L1I1,L1I0,L1I1)]", "[B0,(L1I1,L1I1,L1I1)]"};
   // std::cout << test_grid_names << "\n";
 
+  // Makes a 15 element block where 7 elements have a refinement of 1 in all
+  // dimensions while 8 have a refinement of 2 in all dimensions. ie its a 2x2x2
+  // block where one of the elements is another 2x2x2 block.
   std::vector<std::string> test_grid_names{
       "[B0,(L2I0,L2I0,L2I0)]", "[B0,(L2I1,L2I0,L2I0)]",
       "[B0,(L2I0,L2I1,L2I0)]", "[B0,(L2I1,L2I1,L2I0)]",
@@ -696,8 +699,8 @@ void test_compute_element_indices_and_refinements_and_etc_and_ELCs() {
   std::cout << test_grid_names.size() << ", " << extents.size() << ", "
             << bases.size() << ", " << quadratures.size() << '\n';
 
-  h5::neighbor_directions_and_BLC<SpatialDim>(test_grid_names, extents, bases,
-                                              quadratures);
+  h5::extend_connectivity<SpatialDim>(test_grid_names, extents, bases,
+                                      quadratures);
 }
 
 }  // namespace
@@ -709,7 +712,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   // test_extend_connectivity_data<1>();
   // test_extend_connectivity_data<2>();
   // test_extend_connectivity_data<3>();
-  test_compute_element_indices_and_refinements_and_etc_and_ELCs<3>();
+  test_element_indices_and_refinements_and_etc_and_ELCs<3>();
 
 #ifdef SPECTRE_DEBUG
   CHECK_THROWS_WITH(
