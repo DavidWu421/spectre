@@ -544,7 +544,7 @@ sort_neighbors_by_type(
       normal_value += abs(gsl::at(normal_vector, j));
     }
     for (size_t j = 0; j < SpatialDim; ++j) {
-      if (normal_value == j + 1) {
+      if (static_cast<size_t>(normal_value) == j + 1) {
         gsl::at(neighbors_by_type, j).push_back(neighbor_with_direction);
       }
     }
