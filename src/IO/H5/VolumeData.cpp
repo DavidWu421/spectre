@@ -347,9 +347,9 @@ element_indices_and_refinements(
       std::stringstream element_index_substring(element_grid_name.substr(
           grid_points_start_position + 1,
           grid_points_end_position - grid_points_start_position - 1));
-      size_t current_element_index;
+      size_t current_element_index = 0;
       element_index_substring >> current_element_index;
-      indices_of_element[j] = current_element_index;
+      gsl::at(indices_of_element, j) = current_element_index;
       grid_points_previous_start_position = grid_points_start_position;
 
       h_ref_start_position =
@@ -358,9 +358,9 @@ element_indices_and_refinements(
       std::stringstream element_grid_name_substring(element_grid_name.substr(
           h_ref_start_position + 1,
           h_ref_end_position - h_ref_start_position - 1));
-      size_t current_element_h_ref;
+      size_t current_element_h_ref = 0;
       element_grid_name_substring >> current_element_h_ref;
-      h_ref_of_element[j] = current_element_h_ref;
+      gsl::at(h_ref_of_element, j) = current_element_h_ref;
       h_ref_previous_start_position = h_ref_start_position;
     }
 
@@ -387,12 +387,12 @@ std::vector<std::array<SegmentId, SpatialDim>> create_segment_ids(
   // is the same block as the block for which the refinement and indices are
   // calculated.
   std::vector<std::array<SegmentId, SpatialDim>> segment_ids = {};
-  std::array<SegmentId, SpatialDim> segment_ids_of_current_element;
+  std::array<SegmentId, SpatialDim> segment_ids_of_current_element{};
   for (size_t i = 0; i < indices_and_refinements.first.size(); ++i) {
     for (size_t j = 0; j < SpatialDim; ++j) {
       SegmentId current_segment_id(indices_and_refinements.second[i][j],
                                    indices_and_refinements.first[i][j]);
-      segment_ids_of_current_element[j] = current_segment_id;
+      gsl::at(segment_ids_of_current_element, j) = current_segment_id;
     }
     segment_ids.push_back(segment_ids_of_current_element);
   }
@@ -416,14 +416,15 @@ std::vector<std::array<double, SpatialDim>> element_logical_coordinates(
 
   // std::cout << "ELCS!" << '\n';
 
-  std::array<double, SpatialDim> grid_point_coordinates;
+  std::array<double, SpatialDim> grid_point_coordinates{};
 
   std::vector<std::array<double, SpatialDim>> element_logical_coordinates = {};
   auto element_logical_coordinates_tensor = logical_coordinates(element_mesh);
   for (size_t i = 0; i < element_logical_coordinates_tensor.get(0).size();
        ++i) {
     for (size_t j = 0; j < SpatialDim; ++j) {
-      grid_point_coordinates[j] = element_logical_coordinates_tensor.get(j)[i];
+      gsl::at(grid_point_coordinates, j) =
+          element_logical_coordinates_tensor.get(j)[i];
     }
     // std::cout << grid_point_coordinates[0] << ", " <<
     // grid_point_coordinates[1]
@@ -464,7 +465,7 @@ std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
   // "neighbor_direction".
 
   for (size_t i = 0; i < SpatialDim; ++i) {
-    SegmentId current_segment_id = element_of_interest[i];
+    SegmentId current_segment_id = gsl::at(element_of_interest, i);
     // std::cout << "size: " << all_elements.size() << '\n';
     // lambda identifies the indicies of the non neighbors and stores it in
     // not_neighbors
@@ -473,13 +474,9 @@ std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
         [&i, &current_segment_id](
             std::array<SegmentId, SpatialDim> element_to_compare) {
           // only need touches since if they overlap, they also touch
-          bool touches =
-              share_endpoints(current_segment_id, element_to_compare[i]);
-          if (touches == true) {
-            return false;
-          } else {
-            return true;
-          }
+          bool touches = share_endpoints(current_segment_id,
+                                         gsl::at(element_to_compare, i));
+          return !touches;
         });
     // removes all std::array<SegmentId, SpatialDim> that aren't neighbors
     all_elements.erase(not_neighbors, all_elements.end());
@@ -594,7 +591,8 @@ block_logical_coordinates_for_element(
           (2 * static_cast<double>(gsl::at(indices_and_refinements.first, j)) +
            1) /
               static_cast<double>(number_of_elements);
-      gsl::at(BLC_of_gridpoint, j) = grid_point[j] / number_of_elements + shift;
+      gsl::at(BLC_of_gridpoint, j) =
+          gsl::at(grid_point, j) / number_of_elements + shift;
     }
     BLC_for_element.push_back(BLC_of_gridpoint);
   }
@@ -872,7 +870,8 @@ bool extend_connectivity(
     std::vector<std::array<SegmentId, SpatialDim>> neighbor_segment_ids =
         segment_ids;
     // Identify the element I want to find the neighbors of.
-    std::array<SegmentId, SpatialDim> element_of_interest = segment_ids[i];
+    std::array<SegmentId, SpatialDim> element_of_interest =
+        gsl::at(segment_ids, i);
     // Identifies all the neighbors of the element of interest. Does NOT sort
     // them by type (face, edge, corner).
     const std::vector<std::array<SegmentId, SpatialDim>> all_neighbors =
