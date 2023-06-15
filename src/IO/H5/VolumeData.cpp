@@ -319,17 +319,16 @@ element_indices_and_refinements(
   std::vector<std::array<size_t, SpatialDim>> h_ref = {};
 
   // some string indexing gymnastics
-  size_t grid_points_previous_start_position;
-  size_t grid_points_start_position;
-  size_t grid_points_end_position;
+  size_t grid_points_previous_start_position = 0;
+  size_t grid_points_start_position = 0;
+  size_t grid_points_end_position = 0;
 
-  size_t h_ref_previous_start_position;
-  size_t h_ref_start_position;
-  size_t h_ref_end_position;
+  size_t h_ref_previous_start_position = 0;
+  size_t h_ref_start_position = 0;
+  size_t h_ref_end_position = 0;
 
-  for (size_t i = 0; i < all_grid_names.size(); ++i) {
+  for (const auto& element_grid_name : all_grid_names) {
     std::array<size_t, SpatialDim> indices_of_element = {};
-    std::string element_grid_name = all_grid_names[i];
     grid_points_previous_start_position = 0;
 
     std::array<size_t, SpatialDim> h_ref_of_element = {};
@@ -534,11 +533,11 @@ sort_neighbors_by_type(
              SpatialDim>
       neighbors_by_type;
 
-  for (size_t i = 0; i < all_neighbors.size(); ++i) {
+  for (const auto& neighbor : all_neighbors) {
     std::array<int, SpatialDim> normal_vector =
-        neighbor_direction(element_of_interest, all_neighbors[i]);
+        neighbor_direction(element_of_interest, neighbor);
     std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>
-        neighbor_with_direction{all_neighbors[i], normal_vector};
+        neighbor_with_direction{neighbor, normal_vector};
     int normal_value = 0;
     for (size_t j = 0; j < SpatialDim; ++j) {
       normal_value += abs(gsl::at(normal_vector, j));
@@ -585,18 +584,17 @@ block_logical_coordinates_for_element(
   // std::cout << element_logical_coordinates.size() << '\n';
 
   std::vector<std::array<double, SpatialDim>> BLC_for_element;
-  for (size_t i = 0; i < element_logical_coordinates.size(); ++i) {
+  for (const auto& grid_point : element_logical_coordinates) {
     std::array<double, SpatialDim> BLC_of_gridpoint{};
     for (size_t j = 0; j < SpatialDim; ++j) {
       int number_of_elements =
-          pow(2, gsl::at(indices_and_refinements.second, j));
+          two_to_the(gsl::at(indices_and_refinements.second, j));
       double shift =
           -1 +
           (2 * static_cast<double>(gsl::at(indices_and_refinements.first, j)) +
            1) /
               static_cast<double>(number_of_elements);
-      gsl::at(BLC_of_gridpoint, j) =
-          element_logical_coordinates[i][j] / number_of_elements + shift;
+      gsl::at(BLC_of_gridpoint, j) = grid_point[j] / number_of_elements + shift;
     }
     BLC_for_element.push_back(BLC_of_gridpoint);
   }
