@@ -497,21 +497,21 @@ std::array<int, SpatialDim> neighbor_direction(
   // identifies the normal vector of the element to compare relative to the
   // element of interest. It is known that element_to_compare is a neighbor
 
-  std::array<int, SpatialDim> normal_vector;
+  std::array<int, SpatialDim> normal_vector{};
   for (size_t i = 0; i < SpatialDim; ++i) {
-    if (element_of_interest[i].endpoint(Side::Upper) ==
-        element_to_compare[i].endpoint(Side::Lower)) {
-      normal_vector[i] = 1;
+    if (gsl::at(element_of_interest, i).endpoint(Side::Upper) ==
+        gsl::at(element_to_compare, i).endpoint(Side::Lower)) {
+      gsl::at(normal_vector, i) = 1;
     }
-    if (element_of_interest[i].endpoint(Side::Lower) ==
-        element_to_compare[i].endpoint(Side::Upper)) {
-      normal_vector[i] = -1;
+    if (gsl::at(element_of_interest, i).endpoint(Side::Lower) ==
+        gsl::at(element_to_compare, i).endpoint(Side::Upper)) {
+      gsl::at(normal_vector, i) = -1;
     }
-    if (element_of_interest[i].endpoint(Side::Upper) ==
-            element_to_compare[i].endpoint(Side::Upper) ||
-        element_of_interest[i].endpoint(Side::Lower) ==
-            element_to_compare[i].endpoint(Side::Lower)) {
-      normal_vector[i] = 0;
+    if (gsl::at(element_of_interest, i).endpoint(Side::Upper) ==
+            gsl::at(element_to_compare, i).endpoint(Side::Upper) ||
+        gsl::at(element_of_interest, i).endpoint(Side::Lower) ==
+            gsl::at(element_to_compare, i).endpoint(Side::Lower)) {
+      gsl::at(normal_vector, i) = 0;
     }
   }
 
@@ -541,16 +541,12 @@ sort_neighbors_by_type(
         neighbor_with_direction{all_neighbors[i], normal_vector};
     int normal_value = 0;
     for (size_t j = 0; j < SpatialDim; ++j) {
-      normal_value += abs(normal_vector[j]);
+      normal_value += abs(gsl::at(normal_vector, j));
     }
-    if (normal_value == 1) {
-      neighbors_by_type[0].push_back(neighbor_with_direction);
-    }
-    if (normal_value == 2) {
-      neighbors_by_type[1].push_back(neighbor_with_direction);
-    }
-    if (normal_value == 3) {
-      neighbors_by_type[2].push_back(neighbor_with_direction);
+    for (size_t j = 0; j < SpatialDim; ++j) {
+      if (normal_value == j + 1) {
+        gsl::at(neighbors_by_type, j).push_back(neighbor_with_direction);
+      }
     }
   }
 
@@ -590,13 +586,16 @@ block_logical_coordinates_for_element(
 
   std::vector<std::array<double, SpatialDim>> BLC_for_element;
   for (size_t i = 0; i < element_logical_coordinates.size(); ++i) {
-    std::array<double, SpatialDim> BLC_of_gridpoint;
+    std::array<double, SpatialDim> BLC_of_gridpoint{};
     for (size_t j = 0; j < SpatialDim; ++j) {
-      int number_of_elements = pow(2, indices_and_refinements.second[j]);
+      int number_of_elements =
+          pow(2, gsl::at(indices_and_refinements.second, j));
       double shift =
-          -1 + (2 * static_cast<double>(indices_and_refinements.first[j]) + 1) /
-                   static_cast<double>(number_of_elements);
-      BLC_of_gridpoint[j] =
+          -1 +
+          (2 * static_cast<double>(gsl::at(indices_and_refinements.first, j)) +
+           1) /
+              static_cast<double>(number_of_elements);
+      gsl::at(BLC_of_gridpoint, j) =
           element_logical_coordinates[i][j] / number_of_elements + shift;
     }
     BLC_for_element.push_back(BLC_of_gridpoint);
@@ -628,8 +627,9 @@ std::string grid_name_reconstruction(
   std::string element_grid_name =
       all_grid_names[0].substr(0, all_grid_names[0].find('(', 0) + 1);
   for (size_t i = 0; i < SpatialDim; ++i) {
-    element_grid_name += "L" + std::to_string(element[i].refinement_level()) +
-                         "I" + std::to_string(element[i].index());
+    element_grid_name +=
+        "L" + std::to_string(gsl::at(element, i).refinement_level()) + "I" +
+        std::to_string(gsl::at(element, i).index());
     if (i < SpatialDim - 1) {
       element_grid_name += ",";
     } else if (i == SpatialDim - 1) {
@@ -901,7 +901,7 @@ bool extend_connectivity(
     // find it later in extents, bases, and quadratures
     const auto found_element_grid_name =
         alg::find(all_grid_names, element_of_interest_grid_name);
-    size_t element_of_interest_index = static_cast<size_t>(
+    auto element_of_interest_index = static_cast<size_t>(
         std::distance(all_grid_names.begin(), found_element_grid_name));
 
     // Construct the mesh for the element of interest. mesh_for_grid finds the
@@ -930,15 +930,14 @@ bool extend_connectivity(
     // Need to loop over all the neighbors. First by neighbor type then the
     // number of neighbor in each type.
     for (size_t j = 0; j < SpatialDim; ++j) {
-      std::cout << "NEIGHBOR TYPE: " << j
-                << ", # OF NEIGHBORS OF TYPE: " << neighbors_by_type[j].size()
-                << '\n';
-      for (size_t k = 0; k < neighbors_by_type[j].size(); ++k) {
+      std::cout << "NEIGHBOR TYPE: " << j << ", # OF NEIGHBORS OF TYPE: "
+                << gsl::at(neighbors_by_type, j).size() << '\n';
+      for (size_t k = 0; k < gsl::at(neighbors_by_type, j).size(); ++k) {
         // Reconstruct the grid name for the neighboring element
         std::cout << "Neighbor grid name: " << '\n';
         const std::string neighbor_grid_name =
-            grid_name_reconstruction<SpatialDim>(neighbors_by_type[j][k].first,
-                                                 all_grid_names);
+            grid_name_reconstruction<SpatialDim>(
+                gsl::at(neighbors_by_type, j)[k].first, all_grid_names);
         // Construct the mesh for the neighboring element
         const Mesh<SpatialDim> neighbor_mesh =
             mesh_for_grid<SpatialDim>(neighbor_grid_name, all_grid_names,
@@ -950,16 +949,17 @@ bool extend_connectivity(
         // find it later in extents, bases, and quadratures
         const auto found_neighbor_grid_name =
             alg::find(all_grid_names, neighbor_grid_name);
-        size_t neighbor_index = static_cast<size_t>(
+        auto neighbor_index = static_cast<size_t>(
             std::distance(all_grid_names.begin(), found_neighbor_grid_name));
 
         // Access the normal vector. Lives inside neighbors_by_type
         // datastructure
         // const std::array<int, SpatialDim> neighbor_normal_vector =
         //     neighbors_by_type[j][k].second;
-        std::cout << "Normal vector: " << neighbors_by_type[j][k].second[0]
-                  << ", " << neighbors_by_type[j][k].second[1] << ", "
-                  << neighbors_by_type[j][k].second[2] << '\n';
+        std::cout << "Normal vector: "
+                  << gsl::at(neighbors_by_type, j)[k].second[0] << ", "
+                  << gsl::at(neighbors_by_type, j)[k].second[1] << ", "
+                  << gsl::at(neighbors_by_type, j)[k].second[2] << '\n';
 
         // Access the indices and refinements for the element of interest and
         // change container type.
