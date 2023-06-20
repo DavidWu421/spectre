@@ -705,10 +705,16 @@ std::vector<size_t> secondary_neighbors(
   // Finds the index of the required normal vectors and get elem BLCs
   std::vector<size_t> secondary_BLCs = {};
   for (size_t i = 0; i < normal_vectors.size(); ++i) {
-    const auto neighbor_position = std::find(
-        neighbor_normals.begin(), neighbor_normals.end(), normal_vectors[i]);
+    const auto neighbor_position =
+        std::find_if(neighbors_by_BLCs.begin(), neighbors_by_BLCs.end(),
+                     [normal_vectors,
+                      i](std::pair<std::vector<std::array<double, SpatialDim>>,
+                                   std::array<int, SpatialDim>>
+                             BLCs_and_normal) {
+                       return normal_vectors[i] == BLCs_and_normal.second;
+                     });
     auto neighbor_index = static_cast<size_t>(
-        std::distance(neighbor_normals.begin(), neighbor_position));
+        std::distance(neighbors_by_BLCs.begin(), neighbor_position));
     secondary_BLCs.push_back(neighbor_index);
   }
   for (size_t i = 0; i < secondary_BLCs.size(); ++i) {
@@ -1055,10 +1061,13 @@ bool extend_connectivity(
                   std::array<int, SpatialDim>>
             neighbor_BLCs_and_normal{neighbor_BLCs, neighbor_normal_vector};
         neighbors_by_BLCs.push_back(neighbor_BLCs_and_normal);
-        std::vector<size_t> necessary_neighbors = {};
-        necessary_neighbors =
-            secondary_neighbors(neighbor_normal_vector, neighbors_by_BLCs);
-        // }
+        // Gives the index within neighbors_by_BLCs of the secodary neighbors in
+        // order of increasing z, y, x by element. Each element's BLCs are
+        // sorted in the same fashion. If statement filters out face neighbors.
+        if (j != 0) {
+          std::vector<size_t> necessary_neighbors =
+              secondary_neighbors(neighbor_normal_vector, neighbors_by_BLCs);
+        }
       }
     }
   }
