@@ -636,9 +636,91 @@ std::string grid_name_reconstruction(
   return element_grid_name;
 }
 
+template <size_t SpatialDim>
+std::vector<std::array<double, SpatialDim>> get_element_face(
+    std::vector<std::array<double, SpatialDim>>& element_gridpoints_BLCs,
+    size_t index, bool positive_normal) {
+  const double& threshold_value = positive_normal
+                                      ? element_gridpoints_BLCs.back()[index]
+                                      : element_gridpoints_BLCs.front()[index];
+
+  std::vector<std::array<double, SpatialDim>> element_face =
+      element_gridpoints_BLCs.erase(
+          alg::remove_if(element_gridpoints_BLCs,
+                         [threshold_value, index](
+                             std::array<double, SpatialDim> gridpoint_BLCs) {
+                           return gridpoint_BLCs[index] != threshold_value;
+                         }),
+          element_gridpoints_BLCs.end());
+  return element_face;
+}
+
 // ____________________________END DAVID'S STUFF_______________________________
 
 }  // namespace
+
+template <size_t SpatialDim>
+std::vector<size_t> required_neighbors(
+    const std::array<int, SpatialDim> neighbor_normal_vector,
+    const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                                std::array<int, SpatialDim>>>
+        neighbors_by_BLCs) {
+  // neighbor_normal_vector must be the normal vector of a NON-FACE neighbor
+  std::vector<std::array<int, SpatialDim>> normal_vectors = {};
+  int normal_value = 0;
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    normal_value += abs(gsl::at(neighbor_normal_vector, i));
+  }
+
+  // Identifies which normal vectors are needed to complete the required
+  // neighbors
+  if (normal_value > 1) {
+    for (size_t i = 0; i < SpatialDim; ++i) {
+      if (neighbor_normal_vector[i] != 0) {
+        std::array<int, SpatialDim> required_normal = neighbor_normal_vector;
+        gsl::at(required_normal, i) = 0;
+        std::cout << "Required Normal: " << required_normal[0] << ", "
+                  << required_normal[1] << ", " << required_normal[2] << '\n';
+        normal_vectors.push_back(required_normal);
+        if (normal_value == SpatialDim && SpatialDim == 3) {
+          required_normal = {};
+          gsl::at(required_normal, i) = gsl::at(neighbor_normal_vector, i);
+          std::cout << "Required Normal: " << required_normal[0] << ", "
+                    << required_normal[1] << ", " << required_normal[2] << '\n';
+          normal_vectors.push_back(required_normal);
+        }
+      }
+    }
+  }
+
+  // Container shennagins
+  std::vector<std::vector<std::array<double, SpatialDim>>> neighbors_by_normals;
+  std::vector<std::vector<std::array<double, SpatialDim>>> neighbor_BLCs = {};
+  std::vector<std::array<int, SpatialDim>> neighbor_normals = {};
+  for (size_t i = 0; i < neighbors_by_BLCs.size(); ++i) {
+    neighbor_BLCs.push_back(neighbors_by_BLCs[i].first);
+    neighbor_normals.push_back(neighbors_by_BLCs[i].second);
+  }
+  // Finds the index of the required normal vectors and get elem BLCs
+  std::vector<std::vector<std::array<double, SpatialDim>>> necessary_BLCs = {};
+  for (size_t i = 0; i < normal_vectors.size(); ++i) {
+    const auto neighbor_position = std::find(
+        neighbor_normals.begin(), neighbor_normals.end(), normal_vectors[i]);
+    auto neighbor_index = static_cast<size_t>(
+        std::distance(neighbor_normals.begin(), neighbor_position));
+    necessary_BLCs.push_back(neighbor_BLCs[neighbor_index]);
+  }
+
+  for (size_t i = 0; i < necessary_BLCs.size(); ++i) {
+    for (size_t j = 0; j < necessary_BLCs[i].size(); ++j) {
+      std::cout << "Required Neigbor BLCs: " << necessary_BLCs[i][j][0] << ", "
+                << necessary_BLCs[i][j][1] << ", " << necessary_BLCs[i][j][2]
+                << '\n';
+    }
+  }
+
+  return necessary_BLCs;
+}
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
                        const hid_t /*location*/, const std::string& name,
@@ -924,6 +1006,10 @@ bool extend_connectivity(
             element_of_interest_ELCs,
             element_of_interest_indices_and_refinements);
 
+    // Will store all neighbor BLC's and their normal vectors
+    std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                          std::array<int, SpatialDim>>>
+        neighbors_by_BLCs = {};
     // Need to loop over all the neighbors. First by neighbor type then the
     // number of neighbor in each type.
     for (size_t j = 0; j < SpatialDim; ++j) {
@@ -951,8 +1037,8 @@ bool extend_connectivity(
 
         // Access the normal vector. Lives inside neighbors_by_type
         // datastructure
-        // const std::array<int, SpatialDim> neighbor_normal_vector =
-        //     neighbors_by_type[j][k].second;
+        const std::array<int, SpatialDim> neighbor_normal_vector =
+            neighbors_by_type[j][k].second;
         std::cout << "Normal vector: "
                   << gsl::at(neighbors_by_type, j)[k].second[0] << ", "
                   << gsl::at(neighbors_by_type, j)[k].second[1] << ", "
@@ -970,6 +1056,17 @@ bool extend_connectivity(
         const std::vector<std::array<double, SpatialDim>> neighbor_BLCs =
             block_logical_coordinates_for_element<SpatialDim>(
                 neighbor_ELCs, neighbor_indices_and_refinements);
+        std::pair<std::vector<std::array<double, SpatialDim>>,
+                  std::array<int, SpatialDim>>
+            neighbor_BLCs_and_normal{neighbor_BLCs, neighbor_normal_vector};
+        neighbors_by_BLCs.push_back(neighbor_BLCs_and_normal);
+        std::vector<std::vector<std::array<double, SpatialDim>>>
+            necessary_neighbors = {};
+        // if(some condition so face neighbors are NOT passed into the
+        // function){
+        necessary_neighbors =
+            required_neighbors(neighbor_normal_vector, neighbors_by_BLCs);
+        // }
       }
     }
   }
@@ -1362,4 +1459,21 @@ Mesh<Dim> mesh_for_grid(
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 
 #undef INSTANTIATE
+#undef DIM
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                                  \
+  template std::vector<std::vector<std::array<double, DIM(data)>>>            \
+  required_neighbors<DIM(data)>(                                              \
+      const std::array<int, DIM(data)> neighbor_normal_vector,                \
+      const std::vector<std::pair<std::vector<std::array<double, DIM(data)>>, \
+                                  std::array<int, DIM(data)>>>                \
+          neighbors_by_BLCs);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
+
 }  // namespace h5
