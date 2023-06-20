@@ -660,12 +660,11 @@ std::vector<std::array<double, SpatialDim>> get_element_face(
 }  // namespace
 
 template <size_t SpatialDim>
-std::vector<size_t> required_neighbors(
+std::vector<size_t> secondary_neighbors(
     const std::array<int, SpatialDim> neighbor_normal_vector,
     const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
                                 std::array<int, SpatialDim>>>
         neighbors_by_BLCs) {
-  // neighbor_normal_vector must be the normal vector of a NON-FACE neighbor
   std::vector<std::array<int, SpatialDim>> normal_vectors = {};
   int normal_value = 0;
   for (size_t i = 0; i < SpatialDim; ++i) {
@@ -673,7 +672,7 @@ std::vector<size_t> required_neighbors(
   }
 
   // Identifies which normal vectors are needed to complete the required
-  // neighbors
+  // neighbors. normal_value > 1 filters out face neighbors
   if (normal_value > 1) {
     for (size_t i = 0; i < SpatialDim; ++i) {
       if (neighbor_normal_vector[i] != 0) {
@@ -693,33 +692,29 @@ std::vector<size_t> required_neighbors(
     }
   }
 
-  // Container shennagins
-  std::vector<std::vector<std::array<double, SpatialDim>>> neighbors_by_normals;
-  std::vector<std::vector<std::array<double, SpatialDim>>> neighbor_BLCs = {};
   std::vector<std::array<int, SpatialDim>> neighbor_normals = {};
   for (size_t i = 0; i < neighbors_by_BLCs.size(); ++i) {
-    neighbor_BLCs.push_back(neighbors_by_BLCs[i].first);
     neighbor_normals.push_back(neighbors_by_BLCs[i].second);
   }
+
+  std::sort(neighbor_normals.begin(), neighbor_normals.end(),
+            [](const auto& lhs, const auto& rhs) {
+              return std::lexicographical_compare(lhs.begin(), lhs.end(),
+                                                  rhs.begin(), rhs.end());
+            });
   // Finds the index of the required normal vectors and get elem BLCs
-  std::vector<std::vector<std::array<double, SpatialDim>>> necessary_BLCs = {};
+  std::vector<size_t> secondary_BLCs = {};
   for (size_t i = 0; i < normal_vectors.size(); ++i) {
     const auto neighbor_position = std::find(
         neighbor_normals.begin(), neighbor_normals.end(), normal_vectors[i]);
     auto neighbor_index = static_cast<size_t>(
         std::distance(neighbor_normals.begin(), neighbor_position));
-    necessary_BLCs.push_back(neighbor_BLCs[neighbor_index]);
+    secondary_BLCs.push_back(neighbor_index);
   }
-
-  for (size_t i = 0; i < necessary_BLCs.size(); ++i) {
-    for (size_t j = 0; j < necessary_BLCs[i].size(); ++j) {
-      std::cout << "Required Neigbor BLCs: " << necessary_BLCs[i][j][0] << ", "
-                << necessary_BLCs[i][j][1] << ", " << necessary_BLCs[i][j][2]
-                << '\n';
-    }
+  for (size_t i = 0; i < secondary_BLCs.size(); ++i) {
+    std::cout << "Required Neighbor Index: " << secondary_BLCs[i] << '\n';
   }
-
-  return necessary_BLCs;
+  return secondary_BLCs;
 }
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
@@ -1060,12 +1055,9 @@ bool extend_connectivity(
                   std::array<int, SpatialDim>>
             neighbor_BLCs_and_normal{neighbor_BLCs, neighbor_normal_vector};
         neighbors_by_BLCs.push_back(neighbor_BLCs_and_normal);
-        std::vector<std::vector<std::array<double, SpatialDim>>>
-            necessary_neighbors = {};
-        // if(some condition so face neighbors are NOT passed into the
-        // function){
+        std::vector<size_t> necessary_neighbors = {};
         necessary_neighbors =
-            required_neighbors(neighbor_normal_vector, neighbors_by_BLCs);
+            secondary_neighbors(neighbor_normal_vector, neighbors_by_BLCs);
         // }
       }
     }
@@ -1464,8 +1456,7 @@ GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 
 #define INSTANTIATE(_, data)                                                  \
-  template std::vector<std::vector<std::array<double, DIM(data)>>>            \
-  required_neighbors<DIM(data)>(                                              \
+  template std::vector<size_t> secondary_neighbors<DIM(data)>(                \
       const std::array<int, DIM(data)> neighbor_normal_vector,                \
       const std::vector<std::pair<std::vector<std::array<double, DIM(data)>>, \
                                   std::array<int, DIM(data)>>>                \

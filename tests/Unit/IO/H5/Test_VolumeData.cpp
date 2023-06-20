@@ -549,7 +549,8 @@ void test_required_normals() {
   neighbors_by_BLCs[6].second = {1, 0, -1};
   neighbors_by_BLCs[7].second = {0, 0, -1};
 
-  h5::required_neighbors<SpatialDim>(neighbor_normal_vector, neighbors_by_BLCs);
+  h5::secondary_neighbors<SpatialDim>(neighbor_normal_vector,
+                                      neighbors_by_BLCs);
 }
 }  // namespace
 
