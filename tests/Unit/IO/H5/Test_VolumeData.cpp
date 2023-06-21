@@ -435,7 +435,8 @@ void test_extend_connectivity_data() {
                        bases[i], quadratures[i]};
   }  // End of sample volume data
 
-  h5::extend_connectivity<SpatialDim>(grid_names, extents, bases, quadratures);
+  h5::extend_connectivity_by_block<SpatialDim>(grid_names, extents, bases,
+                                               quadratures);
 
   // const std::string
   // h5_file_name("Unit.IO.H5.VolumeData.ExtendConnectivity.h5"); const uint32_t

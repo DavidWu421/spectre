@@ -253,10 +253,10 @@ Mesh<Dim> mesh_for_grid(
     const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
 
 template <size_t SpatialDim>
-bool extend_connectivity(
-    const std::vector<std::string>& all_grid_names,
-    const std::vector<std::vector<size_t>>& all_extents,
-    const std::vector<std::vector<Spectral::Basis>>& all_bases,
-    const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
+bool extend_connectivity_by_block(
+    const std::vector<std::string>& block_grid_names,
+    const std::vector<std::vector<size_t>>& block_extents,
+    const std::vector<std::vector<Spectral::Basis>>& block_bases,
+    const std::vector<std::vector<Spectral::Quadrature>>& block_quadratures);
 
 }  // namespace h5
