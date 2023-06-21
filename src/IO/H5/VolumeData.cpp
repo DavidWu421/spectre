@@ -721,6 +721,82 @@ std::vector<size_t> secondary_neighbors(
   return secondary_BLCs;
 }
 
+// Returns the BLCs and normals of all the neighbors in neighbors_by_type
+template <size_t SpatialDim>
+std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                      std::array<int, SpatialDim>>>
+neighbors_with_BLCs(
+    const std::vector<std::string>& all_grid_names,
+    const std::vector<std::vector<size_t>>& all_extents,
+    const std::vector<std::vector<Spectral::Basis>>& all_bases,
+    const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures,
+    const std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
+                                           std::array<int, SpatialDim>>>,
+                     SpatialDim>
+        neighbors_by_type,
+    const std::pair<std::vector<std::array<size_t, SpatialDim>>,
+                    std::vector<std::array<size_t, SpatialDim>>>
+        indices_and_refinements) {
+  // Will store all neighbor BLC's and their normal vectors
+  std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                        std::array<int, SpatialDim>>>
+      neighbors_by_BLCs = {};
+  // Need to loop over all the neighbors. First by neighbor type then the
+  // number of neighbor in each type.
+  for (size_t j = 0; j < SpatialDim; ++j) {
+    std::cout << "NEIGHBOR TYPE: " << j << ", # OF NEIGHBORS OF TYPE: "
+              << gsl::at(neighbors_by_type, j).size() << '\n';
+    for (size_t k = 0; k < gsl::at(neighbors_by_type, j).size(); ++k) {
+      // Reconstruct the grid name for the neighboring element
+      std::cout << "Neighbor grid name: " << '\n';
+      const std::string neighbor_grid_name =
+          grid_name_reconstruction<SpatialDim>(
+              gsl::at(neighbors_by_type, j)[k].first, all_grid_names);
+      // Construct the mesh for the neighboring element
+      const Mesh<SpatialDim> neighbor_mesh =
+          mesh_for_grid<SpatialDim>(neighbor_grid_name, all_grid_names,
+                                    all_extents, all_bases, all_quadratures);
+      // Compute the ELC's of the neighboring element
+      const std::vector<std::array<double, SpatialDim>> neighbor_ELCs =
+          element_logical_coordinates<SpatialDim>(neighbor_mesh);
+      // Find the index of the neighbor element within grid_names so we can
+      // find it later in extents, bases, and quadratures
+      const auto found_neighbor_grid_name =
+          alg::find(all_grid_names, neighbor_grid_name);
+      auto neighbor_index = static_cast<size_t>(
+          std::distance(all_grid_names.begin(), found_neighbor_grid_name));
+
+      // Access the normal vector. Lives inside neighbors_by_type
+      // datastructure
+      const std::array<int, SpatialDim> neighbor_normal_vector =
+          neighbors_by_type[j][k].second;
+      std::cout << "Normal vector: "
+                << gsl::at(neighbors_by_type, j)[k].second[0] << ", "
+                << gsl::at(neighbors_by_type, j)[k].second[1] << ", "
+                << gsl::at(neighbors_by_type, j)[k].second[2] << '\n';
+
+      // Access the indices and refinements for the element of interest and
+      // change container type.
+      const std::pair<std::array<size_t, SpatialDim>,
+                      std::array<size_t, SpatialDim>>
+          neighbor_indices_and_refinements{
+              indices_and_refinements.first[neighbor_index],
+              indices_and_refinements.second[neighbor_index]};
+      // Compute BLC for the neighbor element
+      std::cout << "Neighbor BLCs: " << '\n';
+      const std::vector<std::array<double, SpatialDim>> neighbor_BLCs =
+          block_logical_coordinates_for_element<SpatialDim>(
+              neighbor_ELCs, neighbor_indices_and_refinements);
+      std::pair<std::vector<std::array<double, SpatialDim>>,
+                std::array<int, SpatialDim>>
+          neighbor_BLCs_and_normal{neighbor_BLCs, neighbor_normal_vector};
+      neighbors_by_BLCs.push_back(neighbor_BLCs_and_normal);
+    }
+  }
+
+  return neighbors_by_BLCs;
+}
+
 // ____________________________END DAVID'S STUFF_______________________________
 
 }  // namespace
@@ -950,6 +1026,10 @@ bool extend_connectivity(
   const std::vector<std::array<SegmentId, SpatialDim>> segment_ids =
       all_segment_ids<SpatialDim>(indices_and_refinements);
 
+  std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                        std::array<int, SpatialDim>>>
+      neighbors_by_BLCs = {};
+
   for (size_t i = 0; i < segment_ids.size(); ++i) {
     // Need to copy segment_ids to a new container since it will be altered.
     std::vector<std::array<SegmentId, SpatialDim>> neighbor_segment_ids =
@@ -1008,70 +1088,17 @@ bool extend_connectivity(
         block_logical_coordinates_for_element<SpatialDim>(
             element_of_interest_ELCs,
             element_of_interest_indices_and_refinements);
+    neighbors_by_BLCs = neighbors_with_BLCs(
+        all_grid_names, all_extents, all_bases, all_quadratures,
+        neighbors_by_type, indices_and_refinements);
+  }
 
-    // Will store all neighbor BLC's and their normal vectors
-    std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
-                          std::array<int, SpatialDim>>>
-        neighbors_by_BLCs = {};
-    // Need to loop over all the neighbors. First by neighbor type then the
-    // number of neighbor in each type.
-    for (size_t j = 0; j < SpatialDim; ++j) {
-      std::cout << "NEIGHBOR TYPE: " << j << ", # OF NEIGHBORS OF TYPE: "
-                << gsl::at(neighbors_by_type, j).size() << '\n';
-      for (size_t k = 0; k < gsl::at(neighbors_by_type, j).size(); ++k) {
-        // Reconstruct the grid name for the neighboring element
-        std::cout << "Neighbor grid name: " << '\n';
-        const std::string neighbor_grid_name =
-            grid_name_reconstruction<SpatialDim>(
-                gsl::at(neighbors_by_type, j)[k].first, all_grid_names);
-        // Construct the mesh for the neighboring element
-        const Mesh<SpatialDim> neighbor_mesh =
-            mesh_for_grid<SpatialDim>(neighbor_grid_name, all_grid_names,
-                                      all_extents, all_bases, all_quadratures);
-        // Compute the ELC's of the neighboring element
-        const std::vector<std::array<double, SpatialDim>> neighbor_ELCs =
-            element_logical_coordinates<SpatialDim>(neighbor_mesh);
-        // Find the index of the neighbor element within grid_names so we can
-        // find it later in extents, bases, and quadratures
-        const auto found_neighbor_grid_name =
-            alg::find(all_grid_names, neighbor_grid_name);
-        auto neighbor_index = static_cast<size_t>(
-            std::distance(all_grid_names.begin(), found_neighbor_grid_name));
-
-        // Access the normal vector. Lives inside neighbors_by_type
-        // datastructure
-        const std::array<int, SpatialDim> neighbor_normal_vector =
-            neighbors_by_type[j][k].second;
-        std::cout << "Normal vector: "
-                  << gsl::at(neighbors_by_type, j)[k].second[0] << ", "
-                  << gsl::at(neighbors_by_type, j)[k].second[1] << ", "
-                  << gsl::at(neighbors_by_type, j)[k].second[2] << '\n';
-
-        // Access the indices and refinements for the element of interest and
-        // change container type.
-        const std::pair<std::array<size_t, SpatialDim>,
-                        std::array<size_t, SpatialDim>>
-            neighbor_indices_and_refinements{
-                indices_and_refinements.first[neighbor_index],
-                indices_and_refinements.second[neighbor_index]};
-        // Compute BLC for the neighbor element
-        std::cout << "Neighbor BLCs: " << '\n';
-        const std::vector<std::array<double, SpatialDim>> neighbor_BLCs =
-            block_logical_coordinates_for_element<SpatialDim>(
-                neighbor_ELCs, neighbor_indices_and_refinements);
-        std::pair<std::vector<std::array<double, SpatialDim>>,
-                  std::array<int, SpatialDim>>
-            neighbor_BLCs_and_normal{neighbor_BLCs, neighbor_normal_vector};
-        neighbors_by_BLCs.push_back(neighbor_BLCs_and_normal);
-      }
-    }
-    for (size_t j = 0; j < neighbors_by_BLCs.size(); ++j) {
-      // Gives the index within neighbors_by_BLCs of the secodary neighbors in
-      // order of increasing z, y, x by element. Each element's BLCs are
-      // sorted in the same fashion. If statement filters out face neighbors.
-      std::vector<size_t> necessary_neighbors =
-          secondary_neighbors(neighbors_by_BLCs[j].second, neighbors_by_BLCs);
-    }
+  for (size_t j = 0; j < neighbors_by_BLCs.size(); ++j) {
+    // Gives the index within neighbors_by_BLCs of the secodary neighbors in
+    // order of increasing z, y, x by element. Each element's BLCs are
+    // sorted in the same fashion. If statement filters out face neighbors.
+    std::vector<size_t> necessary_neighbors =
+        secondary_neighbors(neighbors_by_BLCs[j].second, neighbors_by_BLCs);
   }
   return true;
 }
