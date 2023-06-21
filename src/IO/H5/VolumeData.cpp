@@ -437,7 +437,7 @@ std::vector<std::array<double, SpatialDim>> element_logical_coordinates(
 
 bool share_endpoints(const SegmentId& segment_id_1,
                      const SegmentId& segment_id_2) {
-  // returns true if segment_id_1 and segment_id_2 touch in any way (including
+  // Returns true if segment_id_1 and segment_id_2 touch in any way (including
   // overlapping). Otherwise returns false
   bool touches = false;
   double upper_1 = segment_id_1.endpoint(Side::Upper);
@@ -457,8 +457,8 @@ template <size_t SpatialDim>
 std::vector<std::array<SegmentId, SpatialDim>> identify_all_neighbors(
     const std::array<SegmentId, SpatialDim>& element_of_interest,
     std::vector<std::array<SegmentId, SpatialDim>>& all_elements) {
-  // identifies all neighbors(face to face, edge, and corner) in one big vector.
-  // This does not differentiate between types of neightbors, just that they are
+  // Identifies all neighbors(face, edge, and corner) in one big vector.
+  // This does not differentiate between types of neighbors, just that they are
   // neighbors. Takes in the element of interest and the rest of the elements in
   // the block in the form of SegmentIds. This function also identifies the
   // element of interest as it's own neighbor. This is removed in
@@ -737,7 +737,7 @@ neighbors_with_BLCs(
       // Access the normal vector. Lives inside neighbors_by_type
       // datastructure
       const std::array<int, SpatialDim> neighbor_normal_vector =
-          neighbors_by_type[j][k].second;
+          gsl::at(gsl::at(neighbors_by_type, j), k).second;
       std::cout << "Normal vector: "
                 << gsl::at(neighbors_by_type, j)[k].second[0] << ", "
                 << gsl::at(neighbors_by_type, j)[k].second[1] << ", "
@@ -769,7 +769,7 @@ std::vector<size_t> secondary_neighbors(
   // neighbors. normal_value > 1 filters out face neighbors
   if (normal_value > 1) {
     for (size_t i = 0; i < SpatialDim; ++i) {
-      if (neighbor_normal_vector[i] != 0) {
+      if (gsl::at(neighbor_normal_vector, i) != 0) {
         std::array<int, SpatialDim> required_normal = neighbor_normal_vector;
         gsl::at(required_normal, i) = 0;
         normal_vectors.push_back(required_normal);
@@ -1048,10 +1048,6 @@ bool extend_connectivity(
   const std::vector<std::array<SegmentId, SpatialDim>> segment_ids =
       all_segment_ids<SpatialDim>(indices_and_refinements);
 
-  std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
-                        std::array<int, SpatialDim>>>
-      neighbors_by_BLCs = {};
-
   for (size_t i = 0; i < segment_ids.size(); ++i) {
     // Need to copy segment_ids to a new container since it will be altered.
     std::vector<std::array<SegmentId, SpatialDim>> neighbor_segment_ids =
@@ -1081,18 +1077,21 @@ bool extend_connectivity(
                                all_bases, all_quadratures,
                                indices_and_refinements);
     // Stores all neighbor BLCs and normals in neighbors_by_BLCs
-    neighbors_by_BLCs = neighbors_with_BLCs(
-        all_grid_names, all_extents, all_bases, all_quadratures,
-        neighbors_by_type, indices_and_refinements);
+    std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                          std::array<int, SpatialDim>>>
+        neighbors_by_BLCs = neighbors_with_BLCs(
+            all_grid_names, all_extents, all_bases, all_quadratures,
+            neighbors_by_type, indices_and_refinements);
+
+    for (size_t j = 0; j < neighbors_by_BLCs.size(); ++j) {
+      // Gives the index within neighbors_by_BLCs of the secodary neighbors in
+      // order of increasing z, y, x by element. Each element's BLCs are
+      // sorted in the same fashion. If statement filters out face neighbors.
+      std::vector<size_t> necessary_neighbors =
+          secondary_neighbors(neighbors_by_BLCs[j].second, neighbors_by_BLCs);
+    }
   }
 
-  for (size_t j = 0; j < neighbors_by_BLCs.size(); ++j) {
-    // Gives the index within neighbors_by_BLCs of the secodary neighbors in
-    // order of increasing z, y, x by element. Each element's BLCs are
-    // sorted in the same fashion. If statement filters out face neighbors.
-    std::vector<size_t> necessary_neighbors =
-        secondary_neighbors(neighbors_by_BLCs[j].second, neighbors_by_BLCs);
-  }
   return true;
 }
 
