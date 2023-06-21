@@ -259,11 +259,4 @@ bool extend_connectivity(
     const std::vector<std::vector<Spectral::Basis>>& all_bases,
     const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
 
-template <size_t SpatialDim>
-std::vector<size_t> secondary_neighbors(
-    const std::array<int, SpatialDim> neighbor_normal_vector,
-    const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
-                                std::array<int, SpatialDim>>>
-        neighbors_by_BLCs);
-
 }  // namespace h5

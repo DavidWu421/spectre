@@ -306,7 +306,7 @@ compute_block_level_properties(
 template <size_t SpatialDim>
 std::pair<std::vector<std::array<size_t, SpatialDim>>,
           std::vector<std::array<size_t, SpatialDim>>>
-element_indices_and_refinements(
+all_element_indices_and_refinements(
     const std::vector<std::string>& all_grid_names) {
   // Computes the refinements and indieces for all the elements in a given block
   // when given the grid names for that particular block. This function CANNOT
@@ -379,7 +379,7 @@ element_indices_and_refinements(
 }
 
 template <size_t SpatialDim>
-std::vector<std::array<SegmentId, SpatialDim>> create_segment_ids(
+std::vector<std::array<SegmentId, SpatialDim>> all_segment_ids(
     const std::pair<std::vector<std::array<size_t, SpatialDim>>,
                     std::vector<std::array<size_t, SpatialDim>>>&
         indices_and_refinements) {
@@ -655,10 +655,6 @@ std::vector<std::array<double, SpatialDim>> get_element_face(
   return element_face;
 }
 
-// ____________________________END DAVID'S STUFF_______________________________
-
-}  // namespace
-
 template <size_t SpatialDim>
 std::vector<size_t> secondary_neighbors(
     const std::array<int, SpatialDim> neighbor_normal_vector,
@@ -678,31 +674,30 @@ std::vector<size_t> secondary_neighbors(
       if (neighbor_normal_vector[i] != 0) {
         std::array<int, SpatialDim> required_normal = neighbor_normal_vector;
         gsl::at(required_normal, i) = 0;
-        std::cout << "Required Normal: " << required_normal[0] << ", "
-                  << required_normal[1] << ", " << required_normal[2] << '\n';
         normal_vectors.push_back(required_normal);
         if (normal_value == SpatialDim && SpatialDim == 3) {
           required_normal = {};
           gsl::at(required_normal, i) = gsl::at(neighbor_normal_vector, i);
-          std::cout << "Required Normal: " << required_normal[0] << ", "
-                    << required_normal[1] << ", " << required_normal[2] << '\n';
           normal_vectors.push_back(required_normal);
         }
       }
     }
   }
-
-  std::vector<std::array<int, SpatialDim>> neighbor_normals = {};
-  for (size_t i = 0; i < neighbors_by_BLCs.size(); ++i) {
-    neighbor_normals.push_back(neighbors_by_BLCs[i].second);
-  }
-
-  std::sort(neighbor_normals.begin(), neighbor_normals.end(),
+  // Sorts the neighbor normals by increasing z, then y, then x.
+  std::sort(normal_vectors.begin(), normal_vectors.end(),
             [](const auto& lhs, const auto& rhs) {
               return std::lexicographical_compare(lhs.begin(), lhs.end(),
                                                   rhs.begin(), rhs.end());
             });
-  // Finds the index of the required normal vectors and get elem BLCs
+
+  // Test print statements
+  // for (size_t i = 0; i < normal_vectors.size(); ++i) {
+  //   std::cout << "Required Normal: " << normal_vectors[i][0] << ", "
+  //             << normal_vectors[i][1] << ", " << normal_vectors[i][2] <<
+  //             '\n';
+  // }
+
+  // Finds the index of the required normal vectors
   std::vector<size_t> secondary_BLCs = {};
   for (size_t i = 0; i < normal_vectors.size(); ++i) {
     const auto neighbor_position =
@@ -717,11 +712,18 @@ std::vector<size_t> secondary_neighbors(
         std::distance(neighbors_by_BLCs.begin(), neighbor_position));
     secondary_BLCs.push_back(neighbor_index);
   }
-  for (size_t i = 0; i < secondary_BLCs.size(); ++i) {
-    std::cout << "Required Neighbor Index: " << secondary_BLCs[i] << '\n';
-  }
+
+  // Test print statements
+  // for (size_t i = 0; i < secondary_BLCs.size(); ++i) {
+  //   std::cout << "Required Neighbor Index: " << secondary_BLCs[i] << '\n';
+  // }
+
   return secondary_BLCs;
 }
+
+// ____________________________END DAVID'S STUFF_______________________________
+
+}  // namespace
 
 VolumeData::VolumeData(const bool subfile_exists, detail::OpenGroup&& group,
                        const hid_t /*location*/, const std::string& name,
@@ -941,12 +943,12 @@ bool extend_connectivity(
   const std::pair<std::vector<std::array<size_t, SpatialDim>>,
                   std::vector<std::array<size_t, SpatialDim>>>
       indices_and_refinements =
-          element_indices_and_refinements<SpatialDim>(all_grid_names);
+          all_element_indices_and_refinements<SpatialDim>(all_grid_names);
 
   // Segment Ids for every element in the block. Each element has SpatialDim
   // SegmentIds, one for each dimension.
   const std::vector<std::array<SegmentId, SpatialDim>> segment_ids =
-      create_segment_ids<SpatialDim>(indices_and_refinements);
+      all_segment_ids<SpatialDim>(indices_and_refinements);
 
   for (size_t i = 0; i < segment_ids.size(); ++i) {
     // Need to copy segment_ids to a new container since it will be altered.
@@ -961,7 +963,7 @@ bool extend_connectivity(
         identify_all_neighbors<SpatialDim>(element_of_interest,
                                            neighbor_segment_ids);
     // Gives all neighbors sorted by type. First is face, then edge, then
-    // corner.
+    // corner. Also gives the normal vector in the pair.
     const std::array<std::vector<std::pair<std::array<SegmentId, SpatialDim>,
                                            std::array<int, SpatialDim>>>,
                      SpatialDim>
@@ -972,8 +974,8 @@ bool extend_connectivity(
     // vector of all grid names to get its position in that vector
     std::cout << "Element of interest grid name: " << '\n';
     // grid_name_reconstruction requires all_grid_names for the block number.
-    // Can be changed later when we loop over the blocks to take in the index of
-    // the block.
+    // This should be CHANGED!!! later when we loop over the blocks to take in
+    // the index of the block.
     const std::string element_of_interest_grid_name =
         grid_name_reconstruction<SpatialDim>(element_of_interest,
                                              all_grid_names);
@@ -1061,14 +1063,14 @@ bool extend_connectivity(
                   std::array<int, SpatialDim>>
             neighbor_BLCs_and_normal{neighbor_BLCs, neighbor_normal_vector};
         neighbors_by_BLCs.push_back(neighbor_BLCs_and_normal);
-        // Gives the index within neighbors_by_BLCs of the secodary neighbors in
-        // order of increasing z, y, x by element. Each element's BLCs are
-        // sorted in the same fashion. If statement filters out face neighbors.
-        if (j != 0) {
-          std::vector<size_t> necessary_neighbors =
-              secondary_neighbors(neighbor_normal_vector, neighbors_by_BLCs);
-        }
       }
+    }
+    for (size_t j = 0; j < neighbors_by_BLCs.size(); ++j) {
+      // Gives the index within neighbors_by_BLCs of the secodary neighbors in
+      // order of increasing z, y, x by element. Each element's BLCs are
+      // sorted in the same fashion. If statement filters out face neighbors.
+      std::vector<size_t> necessary_neighbors =
+          secondary_neighbors(neighbors_by_BLCs[j].second, neighbors_by_BLCs);
     }
   }
   return true;
@@ -1456,20 +1458,6 @@ Mesh<Dim> mesh_for_grid(
       const std::vector<std::vector<size_t>>& all_extents,        \
       const std::vector<std::vector<Spectral::Basis>>& all_bases, \
       const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
-
-GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
-
-#undef INSTANTIATE
-#undef DIM
-
-#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
-
-#define INSTANTIATE(_, data)                                                  \
-  template std::vector<size_t> secondary_neighbors<DIM(data)>(                \
-      const std::array<int, DIM(data)> neighbor_normal_vector,                \
-      const std::vector<std::pair<std::vector<std::array<double, DIM(data)>>, \
-                                  std::array<int, DIM(data)>>>                \
-          neighbors_by_BLCs);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
 

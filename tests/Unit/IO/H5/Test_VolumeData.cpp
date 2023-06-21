@@ -516,42 +516,6 @@ void test_extend_connectivity_data() {
   //   file_system::rm(h5_file_name, true);
   // }
 }
-
-template <size_t SpatialDim>
-void test_required_normals() {
-  std::array<int, 3> neighbor_normal_vector = {-1, 1, -1};
-  std::array<double, 3> BLCs = {0, 0, 0};
-  std::vector<std::array<double, 3>> neighbor_BLCs = {};
-
-  std::vector<std::pair<std::vector<std::array<double, 3>>, std::array<int, 3>>>
-      neighbors_by_BLCs;
-
-  std::vector<std::array<double, 3>> BLCs_of_element = {};
-  for (size_t i = 0; i < 8; ++i) {
-    BLCs_of_element.push_back(BLCs);
-  }
-  std::pair<std::vector<std::array<double, 3>>, std::array<int, 3>>
-      BLCs_and_normal{};
-  for (size_t i = 0; i < 8; ++i) {
-    BLCs_and_normal.first = BLCs_of_element;
-    // BLCs_and_normal.second = neighbor_normal_vector;
-  }
-
-  for (size_t i = 0; i < 8; ++i) {
-    neighbors_by_BLCs.push_back(BLCs_and_normal);
-  }
-  neighbors_by_BLCs[0].second = {-1, 0, -1};
-  neighbors_by_BLCs[1].second = {-1, 0, 0};
-  neighbors_by_BLCs[2].second = {-1, 0, 1};
-  neighbors_by_BLCs[3].second = {0, 0, 1};
-  neighbors_by_BLCs[4].second = {1, 0, 1};
-  neighbors_by_BLCs[5].second = {1, 0, 0};
-  neighbors_by_BLCs[6].second = {1, 0, -1};
-  neighbors_by_BLCs[7].second = {0, 0, -1};
-
-  h5::secondary_neighbors<SpatialDim>(neighbor_normal_vector,
-                                      neighbors_by_BLCs);
-}
 }  // namespace
 
 SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
@@ -561,7 +525,6 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   // test_extend_connectivity_data<1>();
   // test_extend_connectivity_data<2>();
   test_extend_connectivity_data<3>();
-  // test_required_normals<3>();
 
 #ifdef SPECTRE_DEBUG
   CHECK_THROWS_WITH(
