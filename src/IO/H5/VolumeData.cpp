@@ -747,7 +747,7 @@ compute_neighbor_info(
 }
 
 template <size_t SpatialDim>
-std::vector<size_t> secondary_neighbors(
+std::vector<size_t> find_secondary_neighbors(
     const std::array<int, SpatialDim>& neighbor_direction,
     const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
                                 std::array<int, SpatialDim>>>&
@@ -1075,8 +1075,8 @@ bool extend_connectivity_by_block(
       // Gives the index within neighbor_info of the secodary neighbors in
       // order of increasing z, y, x by element. Each element's BLCs are
       // sorted in the same fashion. If statement filters out face neighbors.
-      std::vector<size_t> necessary_neighbors =
-          secondary_neighbors(neighbor_info[j].second, neighbor_info);
+      std::vector<size_t> secondary_neighbors =
+          find_secondary_neighbors(neighbor_info[j].second, neighbor_info);
     }
   }
 
