@@ -530,8 +530,8 @@ compute_neighbors_with_direction(
     const std::vector<std::array<SegmentId, SpatialDim>>& all_neighbors) {
   // outputs a std::array of length spatialdim of elements. First are face
   // neighbors, then edge neighbors, then corner neighbors. Then it also returns
-  // a std::array of the normal vector of each neighbor as well in a std::pair.
-  // Takes in the element of interest and the list of all neighbors.
+  // a std::array of the direction vector of each neighbor as well in a
+  // std::pair. Takes in the element of interest and the list of all neighbors.
   std::vector<
       std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>>
       neighbors_with_direction = {};
@@ -671,7 +671,8 @@ std::vector<std::array<double, SpatialDim>> compute_element_BLCs(
   return element_BLCs;
 }
 
-// Returns the BLCs and normals of all the neighbors in neighbors_with_direction
+// Returns the BLCs and directions of all the neighbors in
+// neighbors_with_direction
 template <size_t SpatialDim>
 std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
                       std::array<int, SpatialDim>>>
@@ -686,7 +687,7 @@ compute_neighbor_BLCs_and_directions(
     const std::pair<std::vector<std::array<size_t, SpatialDim>>,
                     std::vector<std::array<size_t, SpatialDim>>>&
         indices_and_refinements_for_elements) {
-  // Will store all neighbor BLC's and their normal vectors
+  // Will store all neighbor BLC's and their direction vectors
   std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
                         std::array<int, SpatialDim>>>
       neighbor_BLCs_and_directions = {};
@@ -702,18 +703,18 @@ compute_neighbor_BLCs_and_directions(
                              block_quadratures,
                              indices_and_refinements_for_elements);
 
-    // Access the normal vector. Lives inside neighbors_with_direction
+    // Access the direction vector. Lives inside neighbors_with_direction
     // datastructure
     const std::array<int, SpatialDim> neighbor_direction =
         gsl::at(neighbors_with_direction, k).second;
-    std::cout << "Normal vector: " << neighbors_with_direction[k].second[0]
+    std::cout << "direction vector: " << neighbors_with_direction[k].second[0]
               << ", " << neighbors_with_direction[k].second[1] << ", "
               << neighbors_with_direction[k].second[2] << '\n';
 
     std::pair<std::vector<std::array<double, SpatialDim>>,
               std::array<int, SpatialDim>>
-        neighbor_BLCs_and_normal{neighbor_BLCs, neighbor_direction};
-    neighbor_BLCs_and_directions.push_back(neighbor_BLCs_and_normal);
+        neighbor_BLCs_and_direction{neighbor_BLCs, neighbor_direction};
+    neighbor_BLCs_and_directions.push_back(neighbor_BLCs_and_direction);
   }
 
   return neighbor_BLCs_and_directions;
@@ -735,13 +736,13 @@ compute_neighbor_info(
   const std::vector<std::array<SegmentId, SpatialDim>> all_neighbors =
       find_neighbors(element_of_interest, neighbor_segment_ids);
   // Gives all neighbors sorted by type. First is face, then edge, then
-  // corner. Also gives the normal vector in the pair.
+  // corner. Also gives the direction vector in the pair.
   const std::vector<
       std::pair<std::array<SegmentId, SpatialDim>, std::array<int, SpatialDim>>>
       neighbors_with_direction =
           compute_neighbors_with_direction(element_of_interest, all_neighbors);
 
-  // Stores all neighbor BLCs and normals in neighbor_BLCs_and_directions
+  // Stores all neighbor BLCs and directions in neighbor_BLCs_and_directions
   const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
                               std::array<int, SpatialDim>>>
       neighbor_BLCs_and_directions = compute_neighbor_BLCs_and_directions(
@@ -749,74 +750,6 @@ compute_neighbor_info(
           neighbors_with_direction, indices_and_refinements_for_elements);
 
   return neighbor_BLCs_and_directions;
-}
-
-template <size_t SpatialDim>
-std::vector<size_t> find_secondary_neighbors(
-    const std::array<int, SpatialDim>& neighbor_direction,
-    const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
-                                std::array<int, SpatialDim>>>&
-        neighbor_BLCs_and_directions) {
-  std::vector<std::array<int, SpatialDim>> directions = {};
-  int direction_magnitude = 0;
-  for (size_t i = 0; i < SpatialDim; ++i) {
-    direction_magnitude += abs(gsl::at(neighbor_direction, i));
-  }
-
-  // Identifies which normal vectors are needed to complete the required
-  // neighbors. direction_magnitude > 1 filters out face neighbors
-  if (direction_magnitude > 1) {
-    std::array<int, SpatialDim> required_normal{};
-    for (size_t i = 0; i < SpatialDim; ++i) {
-      required_normal = {};
-      if (gsl::at(neighbor_direction, i) != 0) {
-        required_normal = neighbor_direction;
-        gsl::at(required_normal, i) = 0;
-        directions.push_back(required_normal);
-        if (direction_magnitude == SpatialDim && SpatialDim == 3) {
-          required_normal = {};
-          gsl::at(required_normal, i) = gsl::at(neighbor_direction, i);
-          directions.push_back(required_normal);
-        }
-      }
-    }
-  }
-  // Sorts the neighbor normals by increasing z, then y, then x.
-  std::sort(directions.begin(), directions.end(),
-            [](const auto& lhs, const auto& rhs) {
-              return std::lexicographical_compare(lhs.begin(), lhs.end(),
-                                                  rhs.begin(), rhs.end());
-            });
-
-  // Test print statements
-  // for (size_t i = 0; i < directions.size(); ++i) {
-  //   std::cout << "Required Normal: " << directions[i][0] << ", "
-  //             << directions[i][1] << ", " << directions[i][2] <<
-  //             '\n';
-  // }
-
-  // Finds the index of the required normal vectors
-  std::vector<size_t> secondary_BLCs = {};
-  for (size_t i = 0; i < directions.size(); ++i) {
-    const auto found_neighbor = std::find_if(
-        neighbor_BLCs_and_directions.begin(),
-        neighbor_BLCs_and_directions.end(),
-        [directions, i](std::pair<std::vector<std::array<double, SpatialDim>>,
-                                  std::array<int, SpatialDim>>
-                            BLCs_and_normal) {
-          return directions[i] == BLCs_and_normal.second;
-        });
-    const auto neighbor_index = static_cast<size_t>(
-        std::distance(neighbor_BLCs_and_directions.begin(), found_neighbor));
-    secondary_BLCs.push_back(neighbor_index);
-  }
-
-  // Test print statements
-  // for (size_t i = 0; i < secondary_BLCs.size(); ++i) {
-  //   std::cout << "Required Neighbor Index: " << secondary_BLCs[i] << '\n';
-  // }
-
-  return secondary_BLCs;
 }
 
 // ____________________________END DAVID'S STUFF_______________________________
@@ -1029,6 +962,74 @@ void VolumeData::write_volume_data(
   }
 }
 
+template <size_t SpatialDim>
+std::vector<size_t> find_secondary_neighbors(
+    const std::array<int, SpatialDim>& neighbor_direction,
+    const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                                std::array<int, SpatialDim>>>&
+        neighbor_BLCs_and_directions) {
+  std::vector<std::array<int, SpatialDim>> directions = {};
+  int direction_magnitude = 0;
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    direction_magnitude += abs(gsl::at(neighbor_direction, i));
+  }
+
+  // Identifies which direction vectors are needed to complete the required
+  // neighbors. direction_magnitude > 1 filters out face neighbors
+  if (direction_magnitude > 1) {
+    std::array<int, SpatialDim> required_direction{};
+    for (size_t i = 0; i < SpatialDim; ++i) {
+      required_direction = {};
+      if (gsl::at(neighbor_direction, i) != 0) {
+        required_direction = neighbor_direction;
+        gsl::at(required_direction, i) = 0;
+        directions.push_back(required_direction);
+        if (direction_magnitude == SpatialDim && SpatialDim == 3) {
+          required_direction = {};
+          gsl::at(required_direction, i) = gsl::at(neighbor_direction, i);
+          directions.push_back(required_direction);
+        }
+      }
+    }
+  }
+  // Sorts the neighbor directions by increasing z, then y, then x.
+  std::sort(directions.begin(), directions.end(),
+            [](const auto& lhs, const auto& rhs) {
+              return std::lexicographical_compare(lhs.begin(), lhs.end(),
+                                                  rhs.begin(), rhs.end());
+            });
+
+  // Test print statements
+  // for (size_t i = 0; i < directions.size(); ++i) {
+  //   std::cout << "Required direction: " << directions[i][0] << ", "
+  //             << directions[i][1] << ", " << directions[i][2] <<
+  //             '\n';
+  // }
+
+  // Finds the index of the required direction vectors
+  std::vector<size_t> secondary_BLCs = {};
+  for (size_t i = 0; i < directions.size(); ++i) {
+    const auto found_neighbor = std::find_if(
+        neighbor_BLCs_and_directions.begin(),
+        neighbor_BLCs_and_directions.end(),
+        [directions, i](std::pair<std::vector<std::array<double, SpatialDim>>,
+                                  std::array<int, SpatialDim>>
+                            BLCs_and_direction) {
+          return directions[i] == BLCs_and_direction.second;
+        });
+    const auto neighbor_index = static_cast<size_t>(
+        std::distance(neighbor_BLCs_and_directions.begin(), found_neighbor));
+    secondary_BLCs.push_back(neighbor_index);
+  }
+
+  // Test print statements
+  // for (size_t i = 0; i < secondary_BLCs.size(); ++i) {
+  //   std::cout << "Required Neighbor Index: " << secondary_BLCs[i] << '\n';
+  // }
+
+  return secondary_BLCs;
+}
+
 // Write new connectivity connections given a std::vector of observation ids
 template <size_t SpatialDim>
 std::vector<std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
@@ -1075,7 +1076,7 @@ extend_connectivity_by_block(
                              block_extents, block_bases, block_quadratures,
                              indices_and_refinements_for_elements);
 
-    // Stores all neighbor BLCs and normals in neighbor_info
+    // Stores all neighbor BLCs and directions in neighbor_info
     const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
                                 std::array<int, SpatialDim>>>
         neighbor_info = compute_neighbor_info<SpatialDim>(
@@ -1469,6 +1470,20 @@ Mesh<Dim> mesh_for_grid(
                      make_array<Spectral::Quadrature, Dim>(quadratures)};
   }
 }
+
+#define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
+
+#define INSTANTIATE(_, data)                                                  \
+  template std::vector<size_t> find_secondary_neighbors<DIM(data)>(           \
+      const std::array<int, DIM(data)>& neighbor_direction,                   \
+      const std::vector<std::pair<std::vector<std::array<double, DIM(data)>>, \
+                                  std::array<int, DIM(data)>>>&               \
+          neighbor_BLCs_and_directions);
+
+GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))
+
+#undef INSTANTIATE
+#undef DIM
 
 #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 

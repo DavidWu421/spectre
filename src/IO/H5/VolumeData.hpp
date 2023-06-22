@@ -253,6 +253,13 @@ Mesh<Dim> mesh_for_grid(
     const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
 
 template <size_t SpatialDim>
+std::vector<size_t> find_secondary_neighbors(
+    const std::array<int, SpatialDim>& neighbor_direction,
+    const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                                std::array<int, SpatialDim>>>&
+        neighbor_BLCs_and_directions);
+
+template <size_t SpatialDim>
 std::vector<std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
                                   std::array<int, SpatialDim>>>>
 extend_connectivity_by_block(

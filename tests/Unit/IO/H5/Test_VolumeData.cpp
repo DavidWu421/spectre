@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include <iostream>
+
 #include "DataStructures/DataVector.hpp"
 #include "Domain/Creators/Brick.hpp"
 #include "Domain/Creators/RegisterDerivedWithCharm.hpp"
@@ -435,8 +437,170 @@ void test_extend_connectivity_data() {
                        bases[i], quadratures[i]};
   }  // End of sample volume data
 
-  h5::extend_connectivity_by_block<SpatialDim>(grid_names, extents, bases,
-                                               quadratures);
+  std::vector<std::string> refined_grid_names{};
+  if (SpatialDim == 3) {
+    refined_grid_names = {"[B0,(L1I0,L1I1,L1I0)]", "[B0,(L2I0,L2I1,L2I0)]",
+                          "[B0,(L2I1,L2I0,L2I1)]", "[B0,(L1I1,L1I0,L1I1)]",
+                          "[B0,(L1I1,L1I1,L1I0)]", "[B0,(L2I0,L2I0,L2I1)]",
+                          "[B0,(L2I1,L2I1,L2I0)]", "[B0,(L2I1,L2I0,L2I0)]",
+                          "[B0,(L1I1,L1I1,L1I1)]", "[B0,(L2I0,L2I0,L2I0)]",
+                          "[B0,(L1I0,L1I0,L1I1)]", "[B0,(L1I0,L1I1,L1I1)]",
+                          "[B0,(L1I1,L1I0,L1I0)]", "[B0,(L2I1,L2I1,L2I1)]",
+                          "[B0,(L2I0,L2I1,L2I1)]"};
+  }
+  if (SpatialDim == 2) {
+    refined_grid_names = {"[B0,(L1I0,L1I1)]", "[B0,(L2I1,L2I1)]",
+                          "[B0,(L1I1,L1I1)]", "[B0,(L2I0,L2I1)]",
+                          "[B0,(L1I1,L1I0)]", "[B0,(L2I0,L2I0)]",
+                          "[B0,(L2I1,L2I0)]"};
+  }
+  if (SpatialDim == 1) {
+    refined_grid_names = {"[B0,(L2I0)]", "[B0,(L1I1)]", "[B0,(L2I1)]"};
+  }
+
+  std::vector<size_t> refined_element_extents = {};
+  std::vector<Spectral::Basis> refined_element_bases = {};
+  std::vector<Spectral::Quadrature> refined_element_quadratures = {};
+  for (size_t i = 0; i < SpatialDim; ++i) {
+    refined_element_extents.push_back(2);
+    refined_element_bases.push_back(Spectral::Basis::Legendre);
+    refined_element_quadratures.push_back(Spectral::Quadrature::Gauss);
+  }
+
+  extents.erase(extents.begin());
+  bases.erase(bases.begin());
+  quadratures.erase(quadratures.begin());
+  for (size_t i = 0; i < pow(2, SpatialDim); ++i) {
+    extents.insert(extents.begin(), refined_element_extents);
+    bases.insert(bases.begin(), refined_element_bases);
+    quadratures.insert(quadratures.begin(), refined_element_quadratures);
+  }
+
+  std::vector<std::string> test_grid_names{};
+  std::vector<std::vector<size_t>> test_extents = {};
+  std::vector<std::vector<Spectral::Basis>> test_bases = {};
+  std::vector<std::vector<Spectral::Quadrature>> test_quadratures = {};
+  std::vector<size_t> indices = {};
+  for (size_t i = 0; i < refined_grid_names.size(); ++i)
+    indices.push_back(i);
+  // std::random_shuffle(indices.begin(), indices.end());
+
+  for (size_t i = 0; i < indices.size(); ++i) {
+    // std::cout << "refined grid names: " << refined_grid_names[i] << '\n';;
+    test_grid_names.push_back(refined_grid_names[indices[i]]);
+    test_extents.push_back(extents[indices[i]]);
+    test_bases.push_back(bases[indices[i]]);
+    test_quadratures.push_back(quadratures[indices[i]]);
+  }
+
+  for (size_t i = 0; i < test_grid_names.size(); ++i) {
+    std::cout << test_grid_names[i] << '\n';
+  }
+
+  std::vector<std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                                    std::array<int, SpatialDim>>>>
+      all_neighbor_info = h5::extend_connectivity_by_block<SpatialDim>(
+          test_grid_names, test_extents, test_bases, test_quadratures);
+
+  if (SpatialDim == 1) {
+    // Checks [B0,(L2I1)] neighbors (AMR to AMR and neglects higher lower
+    // refinement neighbors)
+    std::array<int, SpatialDim> direction = {-1};
+    CHECK(direction == all_neighbor_info[2][0].second);
+    CHECK(all_neighbor_info[2].size() == 1);
+
+    // Checks [B0,(L1I1)] neighbors (Does not ignore AMR neighbors)
+    CHECK(direction == all_neighbor_info[1][0].second);
+    CHECK(all_neighbor_info[2].size() == 1);
+  }
+
+  if (SpatialDim == 2) {
+    // Checks [B0,(L2I1,L2I1)] neighbors (AMR to AMR face and edge, ignores
+    // lower refinement neighbors)
+    std::array<int, SpatialDim> direction_1 = {-1, 0};
+    std::array<int, SpatialDim> direction_2 = {0, -1};
+    std::array<int, SpatialDim> direction_3 = {-1, -1};
+    CHECK(direction_1 == all_neighbor_info[1][0].second);
+    CHECK(direction_2 == all_neighbor_info[1][2].second);
+    CHECK(direction_3 == all_neighbor_info[1][1].second);
+
+    CHECK(all_neighbor_info[1].size() == 3);
+
+    // Checks [B0,(L1I1,L1I0)] neighbors (Normal face and edge and keeps AMR
+    // face neighbors)
+    direction_1 = {-1, 0};
+    direction_2 = {-1, 1};
+    direction_3 = {0, 1};
+    CHECK(direction_1 == all_neighbor_info[4][1].second);
+    CHECK(direction_1 == all_neighbor_info[4][3].second);
+    CHECK(direction_2 == all_neighbor_info[4][0].second);
+    CHECK(direction_3 == all_neighbor_info[4][2].second);
+
+    CHECK(all_neighbor_info[4].size() == 4);
+  }
+
+  if (SpatialDim == 3) {
+    // Checks [B0,(L2I1,L2I1,L2I1)] neighbors (AMR to AMR neighbors and ignores
+    // lower refinement neighbors)
+    std::array<int, SpatialDim> direction_1 = {-1, 0, 0};
+    std::array<int, SpatialDim> direction_2 = {0, -1, 0};
+    std::array<int, SpatialDim> direction_3 = {0, 0, -1};
+    std::array<int, SpatialDim> direction_4 = {-1, -1, 0};
+    std::array<int, SpatialDim> direction_5 = {-1, 0, -1};
+    std::array<int, SpatialDim> direction_6 = {0, -1, -1};
+    std::array<int, SpatialDim> direction_7 = {-1, -1, -1};
+    CHECK(direction_1 == all_neighbor_info[13][6].second);
+    CHECK(direction_2 == all_neighbor_info[13][1].second);
+    CHECK(direction_3 == all_neighbor_info[13][3].second);
+    CHECK(direction_4 == all_neighbor_info[13][2].second);
+    CHECK(direction_5 == all_neighbor_info[13][0].second);
+    CHECK(direction_6 == all_neighbor_info[13][4].second);
+    CHECK(direction_7 == all_neighbor_info[13][5].second);
+
+    CHECK(all_neighbor_info[13].size() == 7);
+
+    // Checks [B0,(L1I1,L1I0,L1I0)] neighbors (Normal neighbors and includes
+    // lower refinement face neighbors)
+    direction_1 = {-1, 0, 0};
+    direction_2 = {0, 1, 0};
+    direction_3 = {0, 0, 1};
+    direction_4 = {-1, 1, 0};
+    direction_5 = {-1, 0, 1};
+    direction_6 = {0, 1, 1};
+    direction_7 = {-1, 1, 1};
+    CHECK(direction_1 == all_neighbor_info[12][1].second);
+    CHECK(direction_1 == all_neighbor_info[12][4].second);
+    CHECK(direction_1 == all_neighbor_info[12][5].second);
+    CHECK(direction_1 == all_neighbor_info[12][9].second);
+    CHECK(direction_2 == all_neighbor_info[12][3].second);
+    CHECK(direction_3 == all_neighbor_info[12][2].second);
+    CHECK(direction_4 == all_neighbor_info[12][0].second);
+    CHECK(direction_5 == all_neighbor_info[12][7].second);
+    CHECK(direction_6 == all_neighbor_info[12][6].second);
+    CHECK(direction_7 == all_neighbor_info[12][8].second);
+
+    CHECK(all_neighbor_info[12].size() == 10);
+
+    // Checks [B0,(L1I1,L1I0,L1I1)] neighbors (Normal neighbors and includes
+    // lower refinement edge neighbors)
+    direction_1 = {-1, 0, 0};
+    direction_2 = {0, 1, 0};
+    direction_3 = {0, 0, -1};
+    direction_4 = {-1, 1, 0};
+    direction_5 = {-1, 0, -1};
+    direction_6 = {0, 1, -1};
+    direction_7 = {-1, 1, -1};
+    CHECK(direction_1 == all_neighbor_info[3][4].second);
+    CHECK(direction_2 == all_neighbor_info[3][3].second);
+    CHECK(direction_3 == all_neighbor_info[3][6].second);
+    CHECK(direction_4 == all_neighbor_info[3][5].second);
+    CHECK(direction_5 == all_neighbor_info[3][1].second);
+    CHECK(direction_5 == all_neighbor_info[3][7].second);
+    CHECK(direction_6 == all_neighbor_info[3][2].second);
+    CHECK(direction_7 == all_neighbor_info[3][0].second);
+
+    CHECK(all_neighbor_info[3].size() == 8);
+  }
 
   // const std::string
   // h5_file_name("Unit.IO.H5.VolumeData.ExtendConnectivity.h5"); const uint32_t
