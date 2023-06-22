@@ -477,8 +477,13 @@ std::vector<std::array<SegmentId, SpatialDim>> find_neighbors(
         [&i, &current_segment_id](
             std::array<SegmentId, SpatialDim> element_to_compare) {
           // only need touches since if they overlap, they also touch
-          const bool touches = share_endpoints(current_segment_id,
-                                               gsl::at(element_to_compare, i));
+          bool touches = share_endpoints(current_segment_id,
+                                         gsl::at(element_to_compare, i));
+          // Filters out neighbors with higher refinement
+          if (current_segment_id.refinement_level() >
+              gsl::at(element_to_compare, i).refinement_level()) {
+            touches = false;
+          }
           return !touches;
         });
     // removes all std::array<SegmentId, SpatialDim> that aren't neighbors
@@ -1026,11 +1031,18 @@ void VolumeData::write_volume_data(
 
 // Write new connectivity connections given a std::vector of observation ids
 template <size_t SpatialDim>
-bool extend_connectivity_by_block(
+std::vector<std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                                  std::array<int, SpatialDim>>>>
+extend_connectivity_by_block(
     const std::vector<std::string>& block_grid_names,
     const std::vector<std::vector<size_t>>& block_extents,
     const std::vector<std::vector<Spectral::Basis>>& block_bases,
     const std::vector<std::vector<Spectral::Quadrature>>& block_quadratures) {
+  // For testing purposes:
+  std::vector<std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                                    std::array<int, SpatialDim>>>>
+      all_neighbor_info = {};
+
   // std::pair of the indices(first entry) and refinements (second entry) for
   // the entire block.
   const std::pair<std::vector<std::array<size_t, SpatialDim>>,
@@ -1070,6 +1082,7 @@ bool extend_connectivity_by_block(
             element_of_interest, neighbor_segment_ids, block_grid_names,
             block_extents, block_bases, block_quadratures,
             indices_and_refinements_for_elements);
+    all_neighbor_info.push_back(neighbor_info);
 
     for (size_t j = 0; j < neighbor_info.size(); ++j) {
       // Gives the index within neighbor_info of the secodary neighbors in
@@ -1080,7 +1093,7 @@ bool extend_connectivity_by_block(
     }
   }
 
-  return true;
+  return all_neighbor_info;
 }
 
 void VolumeData::write_tensor_component(
@@ -1459,12 +1472,15 @@ Mesh<Dim> mesh_for_grid(
 
 #define DIM(data) BOOST_PP_TUPLE_ELEM(0, data)
 
-#define INSTANTIATE(_, data)                                        \
-  template bool extend_connectivity_by_block<DIM(data)>(            \
-      const std::vector<std::string>& block_grid_names,             \
-      const std::vector<std::vector<size_t>>& block_extents,        \
-      const std::vector<std::vector<Spectral::Basis>>& block_bases, \
-      const std::vector<std::vector<Spectral::Quadrature>>&         \
+#define INSTANTIATE(_, data)                                            \
+  template std::vector<                                                 \
+      std::vector<std::pair<std::vector<std::array<double, DIM(data)>>, \
+                            std::array<int, DIM(data)>>>>               \
+  extend_connectivity_by_block<DIM(data)>(                              \
+      const std::vector<std::string>& block_grid_names,                 \
+      const std::vector<std::vector<size_t>>& block_extents,            \
+      const std::vector<std::vector<Spectral::Basis>>& block_bases,     \
+      const std::vector<std::vector<Spectral::Quadrature>>&             \
           block_quadratures);
 
 GENERATE_INSTANTIATIONS(INSTANTIATE, (1, 2, 3))

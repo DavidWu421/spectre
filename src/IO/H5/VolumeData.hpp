@@ -253,7 +253,9 @@ Mesh<Dim> mesh_for_grid(
     const std::vector<std::vector<Spectral::Quadrature>>& all_quadratures);
 
 template <size_t SpatialDim>
-bool extend_connectivity_by_block(
+std::vector<std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                                  std::array<int, SpatialDim>>>>
+extend_connectivity_by_block(
     const std::vector<std::string>& block_grid_names,
     const std::vector<std::vector<size_t>>& block_extents,
     const std::vector<std::vector<Spectral::Basis>>& block_bases,
