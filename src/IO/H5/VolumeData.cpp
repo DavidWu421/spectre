@@ -591,14 +591,14 @@ block_logical_coordinates_for_element(
             });
 
   // print statements to test
-  for (size_t i = 0; i < BLCs_for_element.size(); ++i) {
-    // std::cout << "ELC: " << element_logical_coordinates[i][0] << ", "
-    //           << element_logical_coordinates[i][1] << ", "
-    //           << element_logical_coordinates[i][2] << '\n';
-    std::cout << "BLC: " << BLCs_for_element[i][0] << ", "
-              << BLCs_for_element[i][1] << ", " << BLCs_for_element[i][2]
-              << '\n';
-  }
+  // for (size_t i = 0; i < BLCs_for_element.size(); ++i) {
+  //   // std::cout << "ELC: " << element_logical_coordinates[i][0] << ", "
+  //   //           << element_logical_coordinates[i][1] << ", "
+  //   //           << element_logical_coordinates[i][2] << '\n';
+  //   std::cout << "BLC: " << BLCs_for_element[i][0] << ", "
+  //             << BLCs_for_element[i][1] << ", " << BLCs_for_element[i][2]
+  //             << '\n';
+  // }
 
   return BLCs_for_element;
 }
@@ -696,7 +696,7 @@ compute_neighbor_BLCs_and_directions(
   for (size_t k = 0; k < neighbors_with_direction.size(); ++k) {
     // Reconstruct the grid name for the neighboring element
     std::cout << "Neighbor grid name: " << '\n';
-    std::cout << "Neighbor BLCs: " << '\n';
+    // std::cout << "Neighbor BLCs: " << '\n';
     const std::vector<std::array<double, SpatialDim>> neighbor_BLCs =
         compute_element_BLCs(neighbors_with_direction[k].first,
                              block_grid_names, block_extents, block_bases,
@@ -750,6 +750,24 @@ compute_neighbor_info(
           neighbors_with_direction, indices_and_refinements_for_elements);
 
   return neighbor_BLCs_and_directions;
+}
+
+template <size_t SpatialDim>
+std::vector<size_t> filter_secondary_neighbors(
+    const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                                std::array<int, SpatialDim>>>&
+        neighbor_BLCs_and_directions,
+    std::vector<size_t> intermediate_secondary_neighbors,
+    std::array<int, SpatialDim> direction_of_interest) {
+  std::vector<size_t> filtered_secondary_neighbors =
+      intermediate_secondary_neighbors;
+
+  // Given the BLCs and directions of all neighbors to an element of interest
+  // and the intermediate secondary neighbors which may contain extraneous
+  // neighbors due to AMR, this function must filter out these extraneous
+  // neighbors.
+
+  return filtered_secondary_neighbors;
 }
 
 // ____________________________END DAVID'S STUFF_______________________________
@@ -1002,32 +1020,51 @@ std::vector<size_t> find_secondary_neighbors(
   // Test print statements
   // for (size_t i = 0; i < directions.size(); ++i) {
   //   std::cout << "Required direction: " << directions[i][0] << ", "
-  //             << directions[i][1] << ", " << directions[i][2] <<
-  //             '\n';
+  //             << directions[i][1] << ", " << directions[i][2] << '\n';
   // }
 
   // Finds the index of the required direction vectors
-  std::vector<size_t> secondary_BLCs = {};
+  std::vector<size_t> secondary_neighbor_indices = {};
+  std::vector<size_t> intermediate_secondary_neighbors = {};
   for (size_t i = 0; i < directions.size(); ++i) {
-    const auto found_neighbor = std::find_if(
-        neighbor_BLCs_and_directions.begin(),
-        neighbor_BLCs_and_directions.end(),
-        [directions, i](std::pair<std::vector<std::array<double, SpatialDim>>,
-                                  std::array<int, SpatialDim>>
-                            BLCs_and_direction) {
-          return directions[i] == BLCs_and_direction.second;
-        });
-    const auto neighbor_index = static_cast<size_t>(
-        std::distance(neighbor_BLCs_and_directions.begin(), found_neighbor));
-    secondary_BLCs.push_back(neighbor_index);
+    intermediate_secondary_neighbors = {};
+    std::array<int, SpatialDim> direction_of_interest = directions[i];
+    size_t same_direction_neighbor_counter = 0;
+    for (size_t j = 0; j < neighbor_BLCs_and_directions.size(); ++j) {
+      // std::cout << "direction of interest: " << direction_of_interest[0] << "
+      // ,"
+      //           << direction_of_interest[1] << '\n';
+      // std::cout << "direction to compare: "
+      //           << neighbor_BLCs_and_directions[j].second[0] << " ,"
+      //           << neighbor_BLCs_and_directions[j].second[1] << '\n'
+      //           << '\n';
+      if (neighbor_BLCs_and_directions[j].second == direction_of_interest) {
+        same_direction_neighbor_counter += 1;
+        intermediate_secondary_neighbors.push_back(j);
+      }
+    }
+    // Need to filter out AMR elements with the same direction vectors
+    std::vector<size_t> filtered_secondary_neighbors = {};
+    // if (same_direction_neighbor_counter > 1) {
+    //   filtered_secondary_neighbors = filter_secondary_neighbors(
+    //       neighbor_BLCs_and_directions, intermediate_secondary_neighbors,
+    //       direction_of_interest);
+    // } else {
+    filtered_secondary_neighbors = intermediate_secondary_neighbors;
+    // }
+
+    for (size_t secondary_neighbors : filtered_secondary_neighbors) {
+      secondary_neighbor_indices.push_back(secondary_neighbors);
+    }
   }
 
   // Test print statements
-  // for (size_t i = 0; i < secondary_BLCs.size(); ++i) {
-  //   std::cout << "Required Neighbor Index: " << secondary_BLCs[i] << '\n';
+  // for (size_t i = 0; i < secondary_neighbor_indices.size(); ++i) {
+  //   std::cout << "Required Neighbor Index: " << secondary_neighbor_indices[i]
+  //   << '\n';
   // }
 
-  return secondary_BLCs;
+  return secondary_neighbor_indices;
 }
 
 // Write new connectivity connections given a std::vector of observation ids
@@ -1070,7 +1107,7 @@ extend_connectivity_by_block(
     // Need the grid name of the element of interest to reverse search it in the
     // vector of all grid names to get its position in that vector
     std::cout << "Element of interest grid name: " << '\n';
-    std::cout << "Element of interest BLCs: " << '\n';
+    // std::cout << "Element of interest BLCs: " << '\n';
     const std::vector<std::array<double, SpatialDim>> element_of_interest_BLCs =
         compute_element_BLCs(element_of_interest, block_grid_names,
                              block_extents, block_bases, block_quadratures,

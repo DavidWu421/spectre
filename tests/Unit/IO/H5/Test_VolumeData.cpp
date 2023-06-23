@@ -225,7 +225,8 @@ void test() {
     }
     my_file.close_current_object();
   }
-  // Open the read volume file and check that the observation id and values are
+  // Open the read volume file and check that the observation id and values
+  // are
   // correct.
   const auto& volume_file =
       my_file.get<h5::VolumeData>("/element_data", version_number);
@@ -502,6 +503,8 @@ void test_extend_connectivity_data() {
       all_neighbor_info = h5::extend_connectivity_by_block<SpatialDim>(
           test_grid_names, test_extents, test_bases, test_quadratures);
 
+  // COMMENT THESE IN FOR EACH DIMENSION AS NEEDED
+
   if (SpatialDim == 1) {
     // Checks [B0,(L2I1)] neighbors (AMR to AMR and neglects higher lower
     // refinement neighbors)
@@ -540,7 +543,8 @@ void test_extend_connectivity_data() {
   }
 
   if (SpatialDim == 3) {
-    // Checks [B0,(L2I1,L2I1,L2I1)] neighbors (AMR to AMR neighbors and ignores
+    // Checks [B0,(L2I1,L2I1,L2I1)] neighbors (AMR to AMR neighbors and
+    // ignores
     // lower refinement neighbors)
     std::array<int, SpatialDim> direction_1 = {-1, 0, 0};
     std::array<int, SpatialDim> direction_2 = {0, -1, 0};
@@ -681,6 +685,38 @@ void test_extend_connectivity_data() {
   //   file_system::rm(h5_file_name, true);
   // }
 }
+
+template <size_t SpatialDim>
+void test_secondary_neighbors() {
+  //   ______  ______
+  //  | EOI | |     |
+  //  |     | |     |
+  //  |_____| |_____|
+  //   __  __  ______
+  //  |_| |_| |     |
+  //   __  __ | NOI |
+  //  |_| |_| |_____|
+
+  const std::array<int, SpatialDim>& neighbor_direction = {1, -1};
+  std::pair<std::vector<std::array<double, SpatialDim>>,
+            std::array<int, SpatialDim>>
+      elem_1 = {{{.3, .3}, {.3, .7}, {.7, .3}, {.7, .7}}, {1, 0}};
+  std::pair<std::vector<std::array<double, SpatialDim>>,
+            std::array<int, SpatialDim>>
+      elem_2 = {{{-.8, -.4}, {-.8, -.2}, {-.6, -.4}, {-.6, -.2}}, {0, -1}};
+  std::pair<std::vector<std::array<double, SpatialDim>>,
+            std::array<int, SpatialDim>>
+      elem_3 = {{{-.4, -.4}, {-.4, -.2}, {-.2, -.4}, {-.2, -.2}}, {0, -1}};
+  std::pair<std::vector<std::array<double, SpatialDim>>,
+            std::array<int, SpatialDim>>
+      elem_4 = {{{.3, -.7}, {.3, -.3}, {.7, -.7}, {.7, -.3}}, {1, -1}};
+  const std::vector<std::pair<std::vector<std::array<double, SpatialDim>>,
+                              std::array<int, SpatialDim>>>&
+      neighbor_BLCs_and_directions = {elem_1, elem_2, elem_3, elem_4};
+
+  h5::find_secondary_neighbors<SpatialDim>(neighbor_direction,
+                                           neighbor_BLCs_and_directions);
+}
 }  // namespace
 
 SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
@@ -690,6 +726,7 @@ SPECTRE_TEST_CASE("Unit.IO.H5.VolumeData", "[Unit][IO][H5]") {
   // test_extend_connectivity_data<1>();
   // test_extend_connectivity_data<2>();
   test_extend_connectivity_data<3>();
+  // test_secondary_neighbors<2>();
 
 #ifdef SPECTRE_DEBUG
   CHECK_THROWS_WITH(
